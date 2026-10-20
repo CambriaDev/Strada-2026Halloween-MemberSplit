@@ -1,0 +1,15 @@
+{
+  "name": "membersplit",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Strada Halloween Edition — single-file, offline Excel team draw with seeded reproducibility and role constraints",
+  "scripts": {
+    "build": "node src/build.mjs",
+    "sample": "node src/make-sample.cjs",
+    "fixtures": "node test/make-fixtures.cjs && node test/make-stress.cjs",
+    "test": "node test/full.cjs && node test/stress.cjs && node test/extra.cjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.1"
+  }
+}

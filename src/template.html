@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="MemberSplit · Strada Halloween Edition — 离线 Excel 随机分组工具：种子可复现，Team Lead 分属两队，SME 2/3，人数自动补偿。">
+<title>MemberSplit · 万圣夜抽签</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 38'%3E%3Crect width='38' height='38' rx='9' fill='%2303110B'/%3E%3Cpath d='M19 6v26M6 19h26' stroke='%2300DF72' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M9.6 9.6l18.8 18.8M28.4 9.6 9.6 28.4' stroke='%23FF963F' stroke-width='3.2' stroke-linecap='round'/%3E%3Ccircle cx='19' cy='19' r='4' fill='%23F2EFE3'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#03110b;
+    --bg-1:#061c13;
+    --panel:rgba(8,30,21,.74);
+    --panel-solid:#071e15;
+    --line:rgba(0,223,114,.14);
+    --line-2:rgba(0,223,114,.27);
+    --text:#f2efe3;
+    --text-2:#b9c6b8;
+    --text-3:#7c8f80;
+    --a:#00df72;
+    --a-rgb:0,223,114;
+    --brand:#00df72;
+    --brand-rgb:0,223,114;
+    --f:#b18cff;
+    --f-rgb:177,140,255;
+    --pumpkin:#ff963f;
+    --pumpkin-rgb:255,150,63;
+    --witch:#b18cff;
+    --witch-rgb:177,140,255;
+    --gold:#ffc857;
+    --gold-rgb:255,200,87;
+    --violet:#c4b5fd;
+    --violet-rgb:196,181,253;
+    --danger:#ff6b5e;
+    --danger-rgb:255,107,94;
+    --mint:#d9ffe0;
+    --radius:16px;
+    --shadow:0 28px 64px -30px rgba(0,0,0,.92);
+    --font:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    --display:"Segoe UI Variable Display","Segoe UI Light","Segoe UI","Microsoft YaHei Light","Microsoft YaHei UI Light","Microsoft YaHei",system-ui,sans-serif;
+    --mono:"Cascadia Code","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html{color-scheme:dark;-webkit-text-size-adjust:100%}
+  [hidden]{display:none!important}
+  html,body{margin:0;min-height:100%}
+  body{
+    background:
+      radial-gradient(1100px 720px at 8% -12%,rgba(0,223,114,.10),transparent 62%),
+      radial-gradient(980px 700px at 100% -8%,rgba(255,150,63,.085),transparent 58%),
+      radial-gradient(1000px 900px at 58% 118%,rgba(107,58,164,.20),transparent 64%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font);
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    overflow:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(rgba(0,223,114,.022) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,223,114,.022) 1px,transparent 1px);
+    background-size:52px 52px;
+    mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 74%);
+    -webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 74%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:
+      radial-gradient(1px 1px at 12% 16%,rgba(217,255,224,.8),transparent),
+      radial-gradient(1px 1px at 28% 8%,rgba(217,255,224,.45),transparent),
+      radial-gradient(1.4px 1.4px at 42% 22%,rgba(255,200,87,.55),transparent),
+      radial-gradient(1px 1px at 63% 12%,rgba(217,255,224,.55),transparent),
+      radial-gradient(1px 1px at 78% 26%,rgba(177,140,255,.6),transparent),
+      radial-gradient(1.4px 1.4px at 88% 9%,rgba(217,255,224,.65),transparent),
+      radial-gradient(1px 1px at 8% 44%,rgba(177,140,255,.35),transparent),
+      radial-gradient(1px 1px at 94% 48%,rgba(217,255,224,.4),transparent),
+      radial-gradient(1px 1px at 50% 5%,rgba(255,255,255,.5),transparent),
+      radial-gradient(1px 1px at 34% 38%,rgba(255,150,63,.35),transparent);
+    animation:starPulse 9s ease-in-out infinite alternate;
+  }
+  ::selection{background:rgba(var(--a-rgb),.28);color:#fff}
+  *{scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.22) transparent}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:rgba(148,163,184,.2);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+  ::-webkit-scrollbar-track{background:transparent}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer}
+  svg{display:block}
+
+  /* ---------- app shell ---------- */
+  .app{height:100vh;display:flex;flex-direction:column;position:relative;z-index:1}
+  .topbar{
+    flex:0 0 auto;height:70px;display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:0 26px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(4,22,15,.94),rgba(3,15,10,.78));
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:30;position:relative;
+  }
+  .topbar::after{
+    content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
+    background:linear-gradient(90deg,transparent 4%,rgba(0,223,114,.55) 28%,rgba(177,140,255,.32) 64%,transparent 96%);
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .brand-mark{flex:0 0 auto;filter:drop-shadow(0 0 16px rgba(0,223,114,.25))}
+  .brand-text{display:flex;flex-direction:column;line-height:1.1;gap:4px;min-width:0}
+  .brand-name{display:flex;align-items:center;gap:8px;font-size:15.5px;font-weight:650;letter-spacing:.012em;white-space:nowrap}
+  .hw-badge{
+    display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 6px;border-radius:999px;
+    border:1px solid rgba(255,150,63,.3);background:rgba(255,150,63,.08);color:#ffbd8a;
+    font-family:var(--mono);font-size:7px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  }
+  .hw-badge svg{width:10px;height:10px;flex:0 0 auto;color:#ff963f}
+  .brand-sub{font-family:var(--mono);font-size:7.5px;letter-spacing:.16em;color:rgba(143,204,168,.62);text-transform:uppercase}
+  .haunt-strip{
+    flex:0 0 auto;height:28px;background:var(--a);color:#03150d;display:flex;align-items:center;
+    position:relative;z-index:31;box-shadow:0 1px 0 rgba(0,0,0,.24),0 0 34px rgba(0,223,114,.14);
+  }
+  .haunt-strip-inner{
+    width:100%;max-width:1600px;margin:0 auto;padding:0 26px;display:flex;align-items:center;gap:9px;
+    font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
+  }
+  .hs-pumpkin{width:13px;height:13px;flex:0 0 auto;color:#0b2c1a;opacity:.9}
+  .hs-brand{font-weight:700}
+  .hs-dot{width:3px;height:3px;border-radius:50%;background:rgba(3,21,13,.38);flex:0 0 auto}
+  .hs-sub{font-weight:500;opacity:.68;letter-spacing:.1em}
+  .hs-date{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:8px;letter-spacing:.08em}
+  .hs-date svg{width:12px;height:12px;opacity:.72}
+  .top-right{display:flex;align-items:center;gap:8px;min-width:0}
+  .pill{
+    display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 10px;
+    border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.025);
+    font-size:10px;color:var(--text-2);white-space:nowrap;
+  }
+  .pill .pdot{width:5px;height:5px;border-radius:50%;background:var(--a);box-shadow:0 0 8px rgba(var(--a-rgb),.7);flex:0 0 auto}
+  button.pill{cursor:pointer;transition:border-color .18s,background .18s}
+  button.pill:hover{border-color:rgba(var(--a-rgb),.35);background:rgba(var(--a-rgb),.055)}
+  .pill.mono{font-family:var(--mono);font-size:9.5px;color:var(--text-3);letter-spacing:.01em;max-width:280px}
+  .pill.mono span{overflow:hidden;text-overflow:ellipsis}
+  .icon-btn{
+    width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.025);
+    color:var(--text-3);display:grid;place-items:center;font-family:var(--mono);font-size:11px;
+    transition:.18s;
+  }
+  .icon-btn:hover{color:var(--text);border-color:var(--line-2);background:rgba(255,255,255,.06)}
+
+  .shell{flex:1;min-height:0;display:grid;grid-template-columns:382px minmax(0,1fr)}
+  .sidebar{
+    min-height:0;overflow-y:auto;overscroll-behavior:contain;
+    padding:20px 18px 30px;border-right:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(11,17,29,.6),rgba(5,8,15,.16));
+  }
+  .stage{
+    min-height:0;overflow-y:auto;overscroll-behavior:contain;
+    padding:26px 30px 44px;position:relative;
+  }
+  .stage-inner{max-width:1440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+
+  /* ---------- panels / controls ---------- */
+  .panel{
+    background:linear-gradient(180deg,rgba(19,28,47,.7),rgba(10,16,28,.58));
+    border:1px solid var(--line);border-radius:16px;padding:15px;
+    box-shadow:0 20px 44px -38px rgba(0,0,0,.9);
+  }
+  .panel + .panel{margin-top:12px}
+  .panel-head{display:flex;align-items:center;gap:9px;margin-bottom:13px;min-height:20px}
+  .step-tag{
+    font-family:var(--mono);font-size:9px;letter-spacing:.13em;color:var(--text-3);
+    border:1px solid var(--line);border-radius:5px;padding:2px 6px;background:rgba(255,255,255,.02);flex:0 0 auto;
+  }
+  .panel-title{font-size:12.5px;font-weight:600;letter-spacing:.035em;color:var(--text);white-space:nowrap}
+  .panel-status{
+    margin-left:auto;display:flex;align-items:center;gap:5px;min-width:0;
+    font-family:var(--mono);font-size:8.5px;letter-spacing:.05em;color:var(--text-3);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .panel-status .sdot{width:5px;height:5px;border-radius:50%;background:var(--text-3);flex:0 0 auto;transition:.2s}
+  .panel-status.live{color:#95ecd1}
+  .panel-status.live .sdot{background:var(--a);box-shadow:0 0 8px rgba(var(--a-rgb),.6)}
+
+  .dropzone{
+    border:1px dashed var(--line-2);border-radius:12px;padding:13px 14px;
+    display:flex;align-items:center;gap:12px;cursor:pointer;outline:none;
+    background:rgba(255,255,255,.012);
+    transition:border-color .18s,background .18s,transform .18s;
+  }
+  .dropzone:hover,.dropzone:focus-visible{border-color:rgba(var(--a-rgb),.5);background:rgba(var(--a-rgb),.04)}
+  .dropzone:active{transform:scale(.995)}
+  .dz-icon{
+    width:36px;height:36px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;
+    color:var(--text-2);background:rgba(255,255,255,.04);border:1px solid var(--line);
+  }
+  .dz-title{font-size:12px;font-weight:600;line-height:1.3}
+  .dz-sub{font-size:9.5px;color:var(--text-3);margin-top:3px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dz-link{color:#8ff0d5;text-decoration:none;border-bottom:1px solid rgba(var(--a-rgb),.3);padding-bottom:1px}
+  .text-link{
+    border:0;background:none;padding:0;color:var(--text-3);font-size:10px;letter-spacing:.02em;
+    transition:color .18s;text-align:left;
+  }
+  .text-link:hover{color:var(--text-2)}
+  .dz-demo{margin-top:9px;padding-left:3px}
+  .file-row{
+    display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid var(--line);
+    border-radius:12px;background:rgba(255,255,255,.025);min-width:0;
+  }
+  .file-badge{
+    width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;
+    color:#a9f3df;background:rgba(var(--a-rgb),.09);border:1px solid rgba(var(--a-rgb),.2);
+  }
+  .file-copy{min-width:0;flex:1}
+  .file-name{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:left}
+  .file-meta{font-size:9px;color:var(--text-3);margin-top:2px;font-family:var(--mono);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file-actions{display:flex;align-items:center;gap:3px;flex:0 0 auto}
+  .mini-btn{
+    width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:transparent;
+    display:grid;place-items:center;color:var(--text-3);transition:.16s;
+  }
+  .mini-btn:hover{color:var(--text);background:rgba(255,255,255,.06);border-color:var(--line)}
+
+  .field{margin-top:11px;min-width:0}
+  .field:first-child{margin-top:0}
+  .field > label{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin-bottom:5px;font-size:10px;color:var(--text-2);letter-spacing:.04em;
+  }
+  .tag-optional{font-size:8px;color:var(--text-3);border:1px solid var(--line);border-radius:4px;padding:1px 4px;letter-spacing:.06em}
+  .field-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;margin-top:11px}
+  .field-grid .field{margin-top:0}
+  input[type=text],input[type=number],select{
+    width:100%;height:36px;padding:0 10px;border-radius:9px;
+    border:1px solid var(--line);background:rgba(3,8,16,.58);color:var(--text);
+    font-size:12px;outline:none;transition:border-color .18s,box-shadow .18s,background .18s;
+  }
+  input[type=text]:hover,input[type=number]:hover,select:hover{border-color:var(--line-2)}
+  input[type=text]:focus,input[type=number]:focus,select:focus{
+    border-color:rgba(var(--a-rgb),.5);box-shadow:0 0 0 3px rgba(var(--a-rgb),.09);background:rgba(3,8,16,.8);
+  }
+  input::placeholder{color:#536077}
+  input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
+  select{
+    appearance:none;-webkit-appearance:none;padding-right:28px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236d7b94' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 10px center;background-size:9px;
+    text-overflow:ellipsis;
+  }
+  select option{background:#0b1220;color:var(--text)}
+  input[type=number]{font-family:var(--mono);font-size:11.5px}
+  .mono{font-family:var(--mono)}
+  .hint{font-size:9.5px;line-height:1.5;color:var(--text-3);margin-top:5px}
+  .config-body{border-top:1px solid rgba(255,255,255,.05);margin-top:13px;padding-top:2px}
+  .config-hint{font-size:9.5px;line-height:1.55;color:var(--text-3);margin-top:10px;padding:8px 9px;border-radius:7px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04)}
+  .config-hint.warn{color:#f3cf92;background:rgba(var(--gold-rgb),.055);border-color:rgba(var(--gold-rgb),.15)}
+  .demo-note{font-size:9.5px;line-height:1.55;color:var(--text-3);margin-top:12px;padding:8px 9px;border-radius:7px;background:rgba(var(--violet-rgb),.045);border:1px solid rgba(var(--violet-rgb),.12)}
+
+  .role-summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+  .count-chip{
+    display:inline-flex;align-items:center;gap:6px;height:25px;padding:0 8px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(255,255,255,.02);
+    font-family:var(--mono);font-size:9px;letter-spacing:.03em;color:var(--text-3);white-space:nowrap;
+  }
+  .count-chip .cdot{width:5px;height:5px;border-radius:50%;background:currentColor;flex:0 0 auto;opacity:.8}
+  .count-chip.lead{color:#e8ca83;border-color:rgba(var(--gold-rgb),.2);background:rgba(var(--gold-rgb),.05)}
+  .count-chip.sme{color:#bcbdff;border-color:rgba(var(--violet-rgb),.2);background:rgba(var(--violet-rgb),.05)}
+  .count-chip.ok{color:#98efd4;border-color:rgba(var(--a-rgb),.22);background:rgba(var(--a-rgb),.055)}
+  .roster-count{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text-3);white-space:nowrap}
+  .role-tools{display:flex;gap:6px;margin-bottom:7px}
+  .role-search{flex:1;height:29px!important;font-size:10.5px!important;border-radius:7px!important;padding:0 9px!important}
+  .role-reset{
+    height:29px;padding:0 8px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.025);
+    font-size:9px;color:var(--text-3);white-space:nowrap;transition:.16s;display:inline-flex;align-items:center;gap:4px;
+  }
+  .role-reset:hover:not(:disabled){color:var(--text-2);border-color:var(--line-2);background:rgba(255,255,255,.05)}
+  .role-reset:disabled{opacity:.4;cursor:not-allowed}
+  .role-list{max-height:232px;overflow-y:auto;overscroll-behavior:contain;border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)}
+  .role-row{display:flex;align-items:center;gap:7px;padding:5px 3px;border-bottom:1px solid rgba(255,255,255,.032)}
+  .role-row:last-child{border-bottom:0}
+  .role-row[hidden]{display:none}
+  .role-avatar{
+    width:21px;height:21px;border-radius:6px;flex:0 0 auto;display:grid;place-items:center;
+    font-size:8px;font-weight:700;color:#071018;
+    background:linear-gradient(145deg,hsl(var(--h,160) 52% 66%),hsl(calc(var(--h,160) + 38) 50% 45%));
+  }
+  .role-name{flex:1;min-width:0;font-size:10.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .role-row.lead .role-name{color:#f3d99f}
+  .role-row.sme .role-name{color:#d0d0ff}
+  .role-row select{
+    width:88px;flex:0 0 auto;height:25px;font-size:9.5px;padding:0 20px 0 6px;border-radius:6px;
+    background-color:rgba(3,8,16,.6);background-position:right 6px center;background-size:8px;color:var(--text-2);
+  }
+  .role-row.lead select{color:#e8ca83;border-color:rgba(var(--gold-rgb),.18)}
+  .role-row.sme select{color:#c4c4ff;border-color:rgba(var(--violet-rgb),.18)}
+  .role-empty{padding:18px 8px;text-align:center;font-size:10px;line-height:1.7;color:var(--text-3)}
+  .role-hint{font-size:9.5px;line-height:1.55;color:var(--text-3);margin-top:9px}
+  .role-hint.ok{color:#8fe8cc}
+  .role-hint.warn{color:#f0cb8a}
+
+  .seed-row{display:flex;gap:6px}
+  .seed-row input{flex:1;min-width:0;font-family:var(--mono);font-size:11px;letter-spacing:.02em}
+  .square-btn{
+    width:36px;height:36px;flex:0 0 auto;border-radius:9px;border:1px solid var(--line);
+    background:rgba(255,255,255,.025);display:grid;place-items:center;color:var(--text-3);transition:.16s;
+  }
+  .square-btn:hover{color:var(--text);border-color:var(--line-2);background:rgba(255,255,255,.06)}
+  .speed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+  .speed-value{font-family:var(--mono);font-size:10.5px;color:#9beed7}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;margin:2px 0 0;padding:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:3px;border-radius:99px;
+    background:linear-gradient(90deg,rgba(var(--a-rgb),.55),rgba(var(--f-rgb),.65));
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#eef3ff;
+    margin-top:-5.5px;box-shadow:0 0 0 3px rgba(5,8,15,.9),0 0 14px rgba(220,235,255,.35);border:0;
+  }
+  input[type=range]::-moz-range-track{height:3px;border-radius:99px;background:linear-gradient(90deg,rgba(var(--a-rgb),.55),rgba(var(--f-rgb),.65))}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#eef3ff;border:0;box-shadow:0 0 0 3px rgba(5,8,15,.9)}
+  .speed-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;color:var(--text-3);margin-top:2px;letter-spacing:.04em}
+
+  .validation{
+    display:flex;align-items:flex-start;gap:7px;margin-top:12px;padding:8px 9px;border-radius:8px;
+    border:1px solid var(--line);background:rgba(255,255,255,.02);
+    font-size:9.5px;line-height:1.5;color:var(--text-3);
+  }
+  .validation .vdot{width:5px;height:5px;border-radius:50%;background:var(--text-3);margin-top:5px;flex:0 0 auto;transition:.2s}
+  .validation.ok{color:#8fe8cc;border-color:rgba(var(--a-rgb),.18);background:rgba(var(--a-rgb),.045)}
+  .validation.ok .vdot{background:var(--a);box-shadow:0 0 8px rgba(var(--a-rgb),.6)}
+  .validation.err{color:#f0b3bd;border-color:rgba(var(--danger-rgb),.2);background:rgba(var(--danger-rgb),.045)}
+  .validation.err .vdot{background:var(--danger)}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    height:36px;padding:0 13px;border-radius:9px;border:1px solid var(--line-2);
+    background:rgba(255,255,255,.035);color:var(--text);
+    font-size:11px;font-weight:600;letter-spacing:.025em;white-space:nowrap;
+    transition:transform .16s,background .16s,border-color .16s,opacity .16s;
+  }
+  .btn:hover:not(:disabled){background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.3);transform:translateY(-1px)}
+  .btn:active:not(:disabled){transform:translateY(0)}
+  .btn:disabled{opacity:.38;cursor:not-allowed;transform:none}
+  .btn.primary{
+    background:linear-gradient(180deg,#f3f6ff,#cbd5ec);color:#0a101c;border-color:transparent;
+    box-shadow:0 12px 28px -16px rgba(220,230,255,.55),inset 0 1px 0 rgba(255,255,255,.8);
+  }
+  .btn.primary:hover:not(:disabled){background:linear-gradient(180deg,#fff,#d9e2f7);box-shadow:0 16px 34px -16px rgba(220,230,255,.65)}
+  .btn.ghost{background:transparent}
+  .btn.small{height:29px;font-size:9.5px;padding:0 9px;border-radius:7px;gap:5px}
+  .btn.draw{width:100%;height:45px;margin-top:10px;font-size:12.5px;font-weight:700;letter-spacing:.06em;border-radius:10px;position:relative;overflow:hidden}
+  .btn.draw::after{
+    content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.5) 50%,transparent 65%);
+    transform:translateX(-120%);transition:transform .6s ease;
+  }
+  .btn.draw:hover:not(:disabled)::after{transform:translateX(120%)}
+  .btn.draw:disabled::after{display:none}
+  .btn.draw svg{position:relative;z-index:1}
+  .shake{animation:shake .34s ease}
+  .side-foot{margin-top:16px;padding:0 3px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:8.5px;letter-spacing:.03em;color:var(--text-3)}
+  .side-foot .foot-note{display:flex;align-items:center;gap:5px}
+  .side-foot .lockdot{width:4px;height:4px;border-radius:50%;background:rgba(var(--a-rgb),.7)}
+
+  /* ---------- empty / hero ---------- */
+  .hero{
+    flex:1;display:grid;grid-template-columns:minmax(0,1.02fr) minmax(340px,.98fr);
+    align-items:center;gap:44px;max-width:1180px;margin:0 auto;width:100%;padding:26px 10px 46px;
+  }
+  .eyebrow{
+    display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:8.5px;font-weight:500;
+    letter-spacing:.2em;color:var(--text-3);text-transform:uppercase;
+  }
+  .eyebrow .eline{width:22px;height:1px;background:linear-gradient(90deg,rgba(var(--a-rgb),.8),transparent)}
+  .hero h2{
+    margin:15px 0 18px;font-size:clamp(40px,4.4vw,62px);line-height:1.01;letter-spacing:-.045em;font-weight:700;
+    text-wrap:balance;
+  }
+  .hero h2 .grad{
+    background:linear-gradient(100deg,#8df2d4 4%,#d9e5ff 48%,#ffbc96 96%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{margin:0 0 25px;max-width:495px;font-size:13px;line-height:1.85;color:var(--text-2)}
+  .hero-actions{display:flex;flex-wrap:wrap;gap:9px}
+  .hero-actions .btn{height:41px;padding:0 17px;font-size:11.5px}
+  .hero-feats{display:flex;flex-wrap:wrap;gap:9px 17px;margin-top:24px}
+  .hero-feat{display:flex;align-items:center;gap:6px;font-size:9.5px;color:var(--text-3);letter-spacing:.01em}
+  .hero-feat svg{color:#84e9ca;flex:0 0 auto}
+  .hero-art{position:relative;height:400px;display:grid;place-items:center;isolation:isolate}
+  .hero-art .halo{
+    position:absolute;width:320px;height:320px;border-radius:50%;
+    background:radial-gradient(circle,rgba(139,140,248,.13),transparent 68%);filter:blur(12px);
+  }
+  .art-orbit{position:absolute;width:336px;height:336px;border:1px solid rgba(255,255,255,.055);border-radius:50%}
+  .art-orbit::before,.art-orbit::after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;background:rgba(var(--a-rgb),.75);box-shadow:0 0 10px rgba(var(--a-rgb),.6)}
+  .art-orbit::before{top:26px;left:72px}
+  .art-orbit::after{bottom:40px;right:60px;background:rgba(var(--f-rgb),.8);box-shadow:0 0 10px rgba(var(--f-rgb),.55)}
+  .art-card{
+    position:absolute;width:222px;padding:13px 14px 12px;border-radius:15px;
+    border:1px solid var(--line);background:linear-gradient(180deg,rgba(20,30,49,.94),rgba(8,13,23,.95));
+    box-shadow:0 30px 65px -32px #000;backdrop-filter:blur(12px);z-index:1;
+  }
+  .art-a{left:1%;top:11%;transform:rotate(-7deg);border-color:rgba(var(--a-rgb),.24);box-shadow:0 32px 70px -34px rgba(var(--a-rgb),.4)}
+  .art-f{right:1%;bottom:9%;transform:rotate(6deg);border-color:rgba(var(--f-rgb),.24);box-shadow:0 32px 70px -34px rgba(var(--f-rgb),.38)}
+  .art-head{display:flex;align-items:center;gap:7px;margin-bottom:9px;font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.12em}
+  .art-a .art-head{color:var(--a)}
+  .art-f .art-head{color:var(--f)}
+  .art-dot{width:5px;height:5px;border-radius:2px;background:currentColor;box-shadow:0 0 8px currentColor}
+  .art-count{margin-left:auto;font-size:7.5px;opacity:.55;letter-spacing:.05em;color:var(--text-2)}
+  .art-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.04)}
+  .art-av{width:18px;height:18px;border-radius:5px;background:rgba(255,255,255,.075);flex:0 0 auto}
+  .art-a .art-row:nth-child(3) .art-av{background:rgba(var(--a-rgb),.3)}
+  .art-a .art-row:nth-child(4) .art-av.lead-av{background:rgba(var(--gold-rgb),.4)}
+  .art-f .art-row:nth-child(3) .art-av.sme-av{background:rgba(var(--violet-rgb),.38)}
+  .art-line{height:4px;border-radius:3px;background:rgba(255,255,255,.075)}
+  .art-tag{
+    position:absolute;font-family:var(--mono);font-size:7px;letter-spacing:.12em;
+    padding:3px 6px;border-radius:4px;background:#0a111d;border:1px solid var(--line);
+  }
+  .tag-lead{right:-10px;top:34px;color:#f2d38d;border-color:rgba(var(--gold-rgb),.3);box-shadow:0 0 18px rgba(var(--gold-rgb),.12)}
+  .tag-sme{left:-12px;bottom:36px;color:#c5c6ff;border-color:rgba(var(--violet-rgb),.3)}
+  .art-die{
+    position:relative;z-index:3;top:-34px;width:82px;height:82px;border-radius:22px;
+    background:linear-gradient(145deg,#f6f8ff,#c4cfe8);color:#0a101c;
+    display:grid;place-items:center;
+    box-shadow:0 24px 55px -18px rgba(220,232,255,.32),inset 0 1px 0 #fff;
+    transform:rotate(-8deg);animation:float 6s ease-in-out infinite;
+  }
+  .art-die svg{width:44px;height:44px}
+  .art-spark{position:absolute;border-radius:50%;background:#fff;opacity:.5;animation:twinkle 4s ease-in-out infinite}
+  .art-spark.s1{width:3px;height:3px;top:18%;right:23%}
+  .art-spark.s2{width:2px;height:2px;bottom:20%;left:18%;animation-delay:1.4s}
+  @keyframes float{0%,100%{transform:rotate(-8deg) translateY(0)}50%{transform:rotate(-6deg) translateY(-10px)}}
+  @keyframes twinkle{0%,100%{opacity:.16;transform:scale(.8)}50%{opacity:.7;transform:scale(1.2)}}
+
+  /* ---------- stage ---------- */
+  .stage-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+  .stage-title{min-width:0}
+  .stage-title h2{margin:5px 0 4px;font-size:25px;font-weight:650;letter-spacing:-.025em;line-height:1.2}
+  .stage-title-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .status-pill{
+    display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(255,255,255,.025);
+    font-family:var(--mono);font-size:8px;letter-spacing:.1em;color:var(--text-3);text-transform:uppercase;
+  }
+  .status-pill .sdot{width:5px;height:5px;border-radius:50%;background:var(--text-3);flex:0 0 auto}
+  .status-pill.running{color:#9df1d8;border-color:rgba(var(--a-rgb),.24);background:rgba(var(--a-rgb),.05)}
+  .status-pill.running .sdot{background:var(--a);box-shadow:0 0 8px rgba(var(--a-rgb),.7);animation:pulse 1.2s infinite}
+  .status-pill.done{color:#98efd4;border-color:rgba(var(--a-rgb),.2);background:rgba(var(--a-rgb),.045)}
+  .status-pill.done .sdot{background:var(--a)}
+  .status-pill.stale{color:#f0cd8b;border-color:rgba(var(--gold-rgb),.24);background:rgba(var(--gold-rgb),.05)}
+  .status-pill.stale .sdot{background:var(--gold)}
+  .stage-meta{display:flex;align-items:center;flex-wrap:wrap;gap:9px;font-size:9.5px;color:var(--text-3);min-height:16px}
+  .stage-meta .msep{width:3px;height:3px;border-radius:50%;background:rgba(148,163,184,.55);flex:0 0 auto}
+  .stage-meta .mono{font-family:var(--mono);letter-spacing:.01em;color:var(--text-2)}
+  .stage-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+  .stage-actions .btn{height:34px;font-size:10.5px;padding:0 11px}
+  .stale-banner{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 13px;padding:9px 12px;
+    border:1px solid rgba(var(--gold-rgb),.22);border-radius:9px;background:rgba(var(--gold-rgb),.055);
+    color:#efdba9;font-size:10px;line-height:1.5;
+  }
+  .stale-banner .sicon{width:6px;height:6px;border-radius:50%;background:var(--gold);flex:0 0 auto;box-shadow:0 0 10px rgba(var(--gold-rgb),.5)}
+  .stale-banner .btn{margin-left:auto;height:27px;font-size:9.5px;border-color:rgba(var(--gold-rgb),.3);color:#f5e3b4;background:rgba(var(--gold-rgb),.07)}
+
+  .checks{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:15px}
+  .check{
+    display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:7px;
+    border:1px solid rgba(255,255,255,.055);background:rgba(255,255,255,.018);
+    font-size:9.5px;color:var(--text-3);transition:border-color .25s,background .25s,color .25s;
+  }
+  .check .cico{
+    width:13px;height:13px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
+    border:1px solid rgba(255,255,255,.12);color:transparent;transition:.25s;
+  }
+  .check .cico svg{width:8px;height:8px}
+  .check b{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--text-2);letter-spacing:.02em}
+  .check.ok{color:#8fe8cc;border-color:rgba(var(--a-rgb),.2);background:rgba(var(--a-rgb),.045)}
+  .check.ok .cico{background:rgba(var(--a-rgb),.16);border-color:transparent;color:#a9f5df}
+  .check.ok b{color:#a9f5df}
+  .check.ok .cico svg{stroke:#a9f5df}
+
+  .draw-console{
+    position:relative;overflow:hidden;isolation:isolate;
+    display:grid;grid-template-columns:164px minmax(0,1fr) 208px;gap:20px;align-items:center;
+    min-height:118px;padding:17px 21px 21px;border-radius:17px;border:1px solid var(--line);
+    background:
+      radial-gradient(120% 160% at 100% 0%,rgba(139,140,248,.055),transparent 55%),
+      linear-gradient(180deg,rgba(16,25,42,.82),rgba(8,13,23,.76));
+    box-shadow:var(--shadow);transition:border-color .3s,box-shadow .3s;
+  }
+  .draw-console::before{
+    content:"";position:absolute;inset:0;z-index:-1;opacity:0;transition:opacity .35s;
+    background:radial-gradient(80% 140% at 78% 50%,rgba(var(--dc-rgb),.13),transparent 62%);
+  }
+  .draw-console[data-team="0"]{--dc-rgb:var(--a-rgb);border-color:rgba(var(--a-rgb),.3)}
+  .draw-console[data-team="1"]{--dc-rgb:var(--f-rgb);border-color:rgba(var(--f-rgb),.3)}
+  .draw-console[data-team="0"]::before,.draw-console[data-team="1"]::before{opacity:1}
+  .draw-console.complete{border-color:rgba(var(--a-rgb),.2)}
+  .dc-state{min-width:0;padding-left:2px}
+  .dc-eyebrow{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:8.5px;letter-spacing:.17em;color:var(--text-3);text-transform:uppercase}
+  .live-dot{width:5px;height:5px;border-radius:50%;background:var(--text-3);transition:.25s;flex:0 0 auto}
+  .draw-console.running .live-dot{background:var(--a);box-shadow:0 0 10px rgba(var(--a-rgb),.8);animation:pulse 1.1s infinite}
+  .draw-console.complete .live-dot{background:var(--a);box-shadow:0 0 8px rgba(var(--a-rgb),.6)}
+  .dc-phase{margin-top:9px;font-size:12px;font-weight:550;color:var(--text-2);line-height:1.35}
+  .dc-counter{margin-top:3px;font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--text-3)}
+  .dc-slot{
+    min-width:0;display:flex;align-items:center;gap:13px;height:76px;padding:0 16px;
+    border-radius:13px;border:1px solid rgba(255,255,255,.07);background:rgba(3,8,16,.46);
+    position:relative;overflow:hidden;transition:border-color .25s,background .25s;
+  }
+  .dc-slot::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(108deg,transparent 28%,rgba(255,255,255,.055) 50%,transparent 72%);
+    transform:translateX(-120%);
+  }
+  .dc-slot.rolling::after{animation:sheen 1.05s linear infinite}
+  .slot-avatar{
+    width:46px;height:46px;border-radius:13px;flex:0 0 auto;display:grid;place-items:center;
+    font-size:12.5px;font-weight:750;letter-spacing:-.02em;color:#071018;
+    background:linear-gradient(145deg,hsl(var(--h,160) 52% 68%),hsl(calc(var(--h,160) + 38) 52% 46%));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28);transition:background .25s;
+  }
+  .slot-copy{min-width:0;flex:1}
+  .slot-name{font-size:23px;font-weight:680;letter-spacing:-.025em;line-height:1.12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);transition:filter .15s,opacity .15s}
+  .slot-role{margin-top:4px;font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;color:var(--text-3);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dc-slot.rolling .slot-name{filter:blur(.7px);opacity:.7}
+  .dc-slot.locked{animation:slotLock .4s cubic-bezier(.2,.9,.25,1)}
+  .dc-slot.team-a{border-color:rgba(var(--a-rgb),.42);background:linear-gradient(180deg,rgba(var(--a-rgb),.075),rgba(3,8,16,.5))}
+  .dc-slot.team-f{border-color:rgba(var(--f-rgb),.42);background:linear-gradient(180deg,rgba(var(--f-rgb),.075),rgba(3,8,16,.5))}
+  .dc-slot.team-a .slot-avatar{background:linear-gradient(145deg,#8cf4d7,#2ebd96);box-shadow:0 0 28px -6px rgba(var(--a-rgb),.55),inset 0 1px 0 rgba(255,255,255,.4)}
+  .dc-slot.team-f .slot-avatar{background:linear-gradient(145deg,#ffbf99,#e37a48);box-shadow:0 0 28px -6px rgba(var(--f-rgb),.55),inset 0 1px 0 rgba(255,255,255,.4)}
+  .dc-slot.complete{border-color:rgba(var(--a-rgb),.26);background:rgba(var(--a-rgb),.045)}
+  .dc-slot.complete .slot-avatar{background:linear-gradient(145deg,#9cf6dd,#34c6a0);color:#062018}
+  .dc-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right;min-width:0}
+  .dc-dest{min-width:0;max-width:100%}
+  .dest-label{font-family:var(--mono);font-size:7.5px;letter-spacing:.17em;color:var(--text-3);text-transform:uppercase}
+  .dest-value{margin-top:4px;font-size:13px;font-weight:600;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .25s}
+  .draw-console[data-team="0"] .dest-value{color:var(--a)}
+  .draw-console[data-team="1"] .dest-value{color:var(--f)}
+  .draw-console.complete .dest-value{color:#9cf2d9}
+  .skip-btn{opacity:.8}
+  .dc-progress{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.05)}
+  #progressBar{height:100%;width:0;background:linear-gradient(90deg,var(--a),var(--f));opacity:.85;transition:width .28s cubic-bezier(.2,.8,.2,1)}
+
+  .arena{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:16px;align-items:stretch;flex:1}
+  .team-panel{
+    --team:var(--a);--team-rgb:var(--a-rgb);
+    position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:392px;
+    padding:15px;border-radius:18px;border:1px solid rgba(var(--team-rgb),.17);
+    background:
+      radial-gradient(120% 90% at 0% 0%,rgba(var(--team-rgb),.075),transparent 55%),
+      linear-gradient(180deg,rgba(17,26,44,.72),rgba(7,12,21,.7));
+    box-shadow:0 26px 55px -40px #000;
+  }
+  .team-panel[data-team="1"]{--team:var(--f);--team-rgb:var(--f-rgb)}
+  .team-panel::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--team),transparent 72%);opacity:.85}
+  .team-panel::after{
+    content:attr(data-letter);position:absolute;right:6px;bottom:-52px;z-index:0;
+    font-size:210px;font-weight:800;line-height:1;letter-spacing:-.06em;
+    color:rgba(var(--team-rgb),.032);pointer-events:none;user-select:none;
+  }
+  .team-head,.lead-slot,.team-list{position:relative;z-index:1}
+  .team-head{display:flex;align-items:center;gap:11px;padding:2px 1px 12px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.055);min-width:0}
+  .team-badge{
+    width:39px;height:39px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;
+    font-family:var(--mono);font-size:15px;font-weight:700;color:var(--team);
+    background:rgba(var(--team-rgb),.1);border:1px solid rgba(var(--team-rgb),.26);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .team-head-copy{min-width:0;flex:1}
+  .team-name-input{
+    width:100%;height:auto!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;
+    font-size:18px!important;font-weight:700!important;letter-spacing:-.015em;color:var(--text);line-height:1.3;
+    box-shadow:none!important;text-overflow:ellipsis;
+  }
+  .team-name-input:hover{color:#fff}
+  .team-name-input:focus{box-shadow:0 1px 0 rgba(var(--team-rgb),.55)!important}
+  .team-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:8.5px;color:var(--text-3);letter-spacing:.03em}
+  .team-sub span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .team-sub b{font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--text-2)}
+  .team-sub .mini-dot{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.7}
+  .team-sub .l-lead{color:var(--gold)}
+  .team-sub .l-sme{color:var(--violet)}
+  .team-count{
+    margin-left:auto;flex:0 0 auto;font-family:var(--mono);font-size:10px;color:var(--team);
+    padding:5px 8px;border-radius:7px;background:rgba(var(--team-rgb),.07);border:1px solid rgba(var(--team-rgb),.18);
+    white-space:nowrap;
+  }
+  .lead-slot{
+    min-height:59px;border-radius:12px;padding:9px 11px;margin-bottom:9px;
+    border:1px dashed rgba(var(--gold-rgb),.22);background:rgba(var(--gold-rgb),.028);
+    display:flex;align-items:center;justify-content:center;transition:border-color .25s,background .25s;
+  }
+  .lead-slot.filled{border-style:solid;border-color:rgba(var(--gold-rgb),.3);background:linear-gradient(120deg,rgba(var(--gold-rgb),.075),rgba(var(--gold-rgb),.015));justify-content:flex-start}
+  .lead-placeholder{font-family:var(--mono);font-size:7.5px;letter-spacing:.17em;color:rgba(var(--gold-rgb),.5);text-transform:uppercase}
+  .lead-card{display:flex;align-items:center;gap:10px;width:100%;min-width:0}
+  .lead-avatar{
+    width:37px;height:37px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;
+    font-size:10.5px;font-weight:750;color:#1d1403;
+    background:linear-gradient(145deg,#ffe5a0,#dca93f);box-shadow:0 0 22px -8px rgba(var(--gold-rgb),.65),inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .lead-copy{min-width:0;flex:1}
+  .lead-kicker{font-family:var(--mono);font-size:7px;letter-spacing:.16em;color:rgba(var(--gold-rgb),.72);text-transform:uppercase}
+  .lead-name{margin-top:2px;font-size:12.5px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lead-crown{color:rgba(var(--gold-rgb),.8);flex:0 0 auto}
+  .team-list{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0}
+  .list-placeholder{
+    flex:1;display:grid;place-items:center;min-height:210px;border-radius:11px;
+    border:1px dashed rgba(255,255,255,.055);background:rgba(255,255,255,.008);
+    font-family:var(--mono);font-size:7.5px;letter-spacing:.16em;color:var(--text-3);text-transform:uppercase;text-align:center;padding:14px;
+  }
+  .member{
+    display:flex;align-items:center;gap:9px;padding:7px 9px;min-height:43px;
+    border-radius:10px;border:1px solid rgba(255,255,255,.045);background:rgba(255,255,255,.026);
+    transition:background .16s,border-color .16s;min-width:0;
+  }
+  .member:hover{background:rgba(255,255,255,.048);border-color:rgba(var(--team-rgb),.16)}
+  .member.is-sme{border-color:rgba(var(--violet-rgb),.1);background:rgba(var(--violet-rgb),.025)}
+  .member.is-sme:hover{background:rgba(var(--violet-rgb),.055);border-color:rgba(var(--violet-rgb),.2)}
+  .member .avatar{
+    width:29px;height:29px;border-radius:8px;flex:0 0 auto;display:grid;place-items:center;
+    font-size:8.5px;font-weight:750;letter-spacing:-.02em;color:#071018;
+    background:linear-gradient(145deg,hsl(var(--h,160) 52% 68%),hsl(calc(var(--h,160) + 38) 52% 46%));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .member-name{flex:1;min-width:0;font-size:11.5px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .role-pill{
+    flex:0 0 auto;font-family:var(--mono);font-size:7px;letter-spacing:.1em;text-transform:uppercase;
+    padding:3px 5px;border-radius:4px;color:#c3c4ff;background:rgba(var(--violet-rgb),.09);border:1px solid rgba(var(--violet-rgb),.2);
+  }
+  .member.enter{animation:memberIn .36s cubic-bezier(.2,.8,.2,1) both}
+  .lead-card.enter{animation:memberIn .42s cubic-bezier(.2,.8,.2,1) both}
+
+  /* ---------- toast / dialog / overlays ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);z-index:120;
+    max-width:min(520px,calc(100vw - 32px));padding:10px 15px;border-radius:10px;
+    border:1px solid var(--line-2);background:rgba(14,22,37,.96);color:var(--text);
+    font-size:11px;line-height:1.5;box-shadow:0 24px 50px -20px #000;
+    opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;backdrop-filter:blur(14px);
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.error{border-color:rgba(var(--danger-rgb),.3);background:rgba(35,14,22,.97);color:#ffd9df}
+  .toast.success{border-color:rgba(var(--a-rgb),.24)}
+  .toast .tline{display:flex;gap:7px;align-items:flex-start}
+  .toast .tdot{width:5px;height:5px;border-radius:50%;background:var(--a);margin-top:5px;flex:0 0 auto}
+  .toast.error .tdot{background:var(--danger)}
+  dialog#aboutDialog{
+    width:min(560px,calc(100vw - 32px));max-height:min(86vh,720px);overflow:auto;
+    padding:0;border:1px solid var(--line-2);border-radius:18px;background:#0b1321;color:var(--text);
+    box-shadow:0 40px 90px -30px #000;
+  }
+  dialog#aboutDialog::backdrop{background:rgba(2,5,10,.72);backdrop-filter:blur(7px)}
+  .dlg-head{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0b1321;z-index:1}
+  .dlg-head h3{margin:0;font-size:15px;letter-spacing:.01em}
+  .dlg-head .dlg-ver{font-family:var(--mono);font-size:8px;color:var(--text-3);letter-spacing:.08em;border:1px solid var(--line);border-radius:4px;padding:2px 5px}
+  .dlg-close{margin-left:auto;width:27px;height:27px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--text-3);display:grid;place-items:center}
+  .dlg-close:hover{color:var(--text);background:rgba(255,255,255,.05)}
+  .dlg-body{padding:16px 20px 22px;font-size:11px;line-height:1.75;color:var(--text-2)}
+  .dlg-body h4{margin:16px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:.14em;color:var(--text-3);text-transform:uppercase}
+  .dlg-body h4:first-child{margin-top:0}
+  .dlg-body p{margin:0 0 7px}
+  .dlg-body ol,.dlg-body ul{margin:0;padding-left:17px}
+  .dlg-body li{margin:3px 0}
+  .dlg-body b{color:var(--text);font-weight:600}
+  .dlg-note{padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.025);font-size:10px;color:var(--text-3);margin-top:10px}
+  .dlg-credit{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);font-size:9px;color:var(--text-3);line-height:1.6}
+  .drag-overlay{
+    position:fixed;inset:0;z-index:200;display:none;place-items:center;
+    background:rgba(3,7,13,.78);backdrop-filter:blur(6px);pointer-events:none;
+  }
+  .drag-overlay.show{display:grid}
+  .drag-card{
+    padding:34px 46px;border:1.5px dashed rgba(var(--a-rgb),.5);border-radius:20px;
+    background:rgba(10,18,30,.94);text-align:center;box-shadow:0 30px 80px -30px #000;
+  }
+  .drag-card .drag-ico{margin:0 auto 12px;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:var(--a);background:rgba(var(--a-rgb),.1);border:1px solid rgba(var(--a-rgb),.25)}
+  .drag-card b{display:block;font-size:15px;letter-spacing:.01em}
+  .drag-card span{display:block;margin-top:5px;font-size:10px;color:var(--text-3)}
+  #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:110}
+
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @keyframes sheen{0%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+  @keyframes slotLock{0%{transform:scale(.985)}46%{transform:scale(1.012)}100%{transform:scale(1)}}
+  @keyframes memberIn{from{opacity:0;transform:translateY(9px) scale(.985);filter:blur(1.5px)}to{opacity:1;transform:none;filter:none}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}}
+
+  /* ================= Strada × Halloween skin ================= */
+  ::selection{background:rgba(0,223,114,.28);color:#fff}
+  *{scrollbar-color:rgba(0,223,114,.2) transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(0,223,114,.18);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+
+  .haunt-strip-inner{padding:0 26px}
+
+  /* --- controls --- */
+  .btn{border-radius:999px;border-color:rgba(0,223,114,.2);background:rgba(0,223,114,.035)}
+  .btn:hover:not(:disabled){background:rgba(0,223,114,.09);border-color:rgba(0,223,114,.42)}
+  .btn.primary{
+    background:linear-gradient(180deg,#2cf090,#00d96e);color:#04160d;border-color:transparent;
+    box-shadow:0 12px 30px -14px rgba(0,223,114,.55),inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .btn.primary:hover:not(:disabled){
+    background:linear-gradient(180deg,#67ffb2,#12e77d);
+    box-shadow:0 18px 38px -14px rgba(0,223,114,.65);
+  }
+  .btn.ghost{background:transparent;border-color:rgba(0,223,114,.18)}
+  .btn.ghost:hover:not(:disabled){background:rgba(0,223,114,.07);border-color:rgba(0,223,114,.4)}
+  .btn.draw{height:46px;font-size:12.5px;letter-spacing:.09em}
+  .btn-arrow{margin-left:2px;font-size:14px;line-height:1;transition:transform .18s}
+  .btn.primary:hover .btn-arrow{transform:translateX(3px)}
+  .icon-btn:hover{color:var(--mint);border-color:rgba(0,223,114,.35);background:rgba(0,223,114,.07)}
+  .pill{border-color:rgba(0,223,114,.15);background:rgba(0,223,114,.025)}
+  button.pill:hover{border-color:rgba(0,223,114,.4);background:rgba(0,223,114,.07)}
+  .pill.mono{color:var(--text-3)}
+  .pill.mono span{color:rgba(185,198,184,.75)}
+
+  input[type=text],input[type=number],select{
+    border-color:rgba(0,223,114,.15);background:rgba(2,14,9,.56);
+  }
+  input[type=text]:hover,input[type=number]:hover,select:hover{border-color:rgba(0,223,114,.3)}
+  input[type=text]:focus,input[type=number]:focus,select:focus{
+    border-color:rgba(0,223,114,.55);box-shadow:0 0 0 3px rgba(0,223,114,.1);background:rgba(2,14,9,.84);
+  }
+  select option{background:#04160d;color:var(--text)}
+  .role-row select{background-color:rgba(2,14,9,.66);border-color:rgba(0,223,114,.1)}
+
+  /* --- panels / sidebar --- */
+  .panel{
+    border-radius:14px;border-color:rgba(0,223,114,.14);position:relative;overflow:hidden;
+    background:linear-gradient(180deg,rgba(9,35,24,.8),rgba(5,24,16,.66));
+    box-shadow:0 24px 50px -40px rgba(0,0,0,.95);
+  }
+  .panel::before{
+    content:"";position:absolute;left:15px;right:15px;top:0;height:1px;pointer-events:none;
+    background:linear-gradient(90deg,rgba(0,223,114,.42),rgba(177,140,255,.14) 58%,transparent);
+    opacity:.7;
+  }
+  .sidebar{
+    border-right-color:rgba(0,223,114,.12);
+    background:linear-gradient(180deg,rgba(5,26,18,.72),rgba(3,17,11,.28));
+  }
+  .step-tag{
+    width:27px;height:23px;padding:0;border:0;border-radius:0;display:grid;place-items:center;
+    clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);
+    background:rgba(0,223,114,.14);color:#93f2c9;font-size:8.5px;letter-spacing:.06em;
+  }
+  .panel-title{letter-spacing:.045em}
+  .panel-status.live{color:#8ef0c8}
+  .panel-status.live .sdot{background:var(--brand);box-shadow:0 0 8px rgba(0,223,114,.6)}
+  .dropzone:hover,.dropzone:focus-visible{border-color:rgba(0,223,114,.5);background:rgba(0,223,114,.045)}
+  .file-badge{color:#a9f5d9;background:rgba(0,223,114,.08);border-color:rgba(0,223,114,.2)}
+  .dz-link{color:#8ff0d5;border-bottom-color:rgba(0,223,114,.3)}
+  .count-chip.lead{color:#ffd68a;border-color:rgba(255,200,87,.24);background:rgba(255,200,87,.06)}
+  .count-chip.sme{color:#d7c9ff;border-color:rgba(177,140,255,.24);background:rgba(177,140,255,.06)}
+  .count-chip.ok{color:#9af3d1;border-color:rgba(0,223,114,.24);background:rgba(0,223,114,.06)}
+  .validation.ok{color:#9af3d1;border-color:rgba(0,223,114,.2);background:rgba(0,223,114,.05)}
+  .role-hint.ok{color:#9af3d1}
+  .role-hint.warn{color:#ffd18e}
+  .speed-value{color:#9af3d1}
+  .side-foot .lockdot{background:rgba(0,223,114,.7);box-shadow:0 0 6px rgba(0,223,114,.5)}
+
+  /* --- micro type --- */
+  .eyebrow{
+    font-family:var(--font);font-size:8.5px;font-weight:600;letter-spacing:.21em;
+    color:rgba(185,198,184,.64);text-transform:uppercase;
+  }
+  .eyebrow .eline{background:linear-gradient(90deg,rgba(0,223,114,.9),rgba(177,140,255,.3),transparent)}
+  .hero .eyebrow{color:#8fe8c6}
+  .stage-title .eyebrow{color:rgba(185,198,184,.64)}
+  .stage-title .eyebrow .live-dot{background:var(--brand);box-shadow:0 0 10px rgba(0,223,114,.7);width:4px;height:4px}
+
+  /* --- hero --- */
+  .hero{gap:46px;padding:16px 8px 38px;align-items:center}
+  .hero h2{
+    font-family:var(--display);font-weight:300;font-size:clamp(46px,4.9vw,70px);
+    line-height:1.01;letter-spacing:-.042em;margin:16px 0 18px;
+  }
+  .hero h2 .grad{
+    background:linear-gradient(100deg,#d9ffe0 0%,#00df72 36%,#ffc857 70%,#ff963f 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 26px rgba(0,223,114,.12));
+  }
+  .hero p{font-size:13.5px;line-height:1.85;color:var(--text-2);max-width:510px}
+  .hero-actions .btn{height:43px;padding:0 18px;font-size:11.5px}
+  .hero-feat{color:rgba(185,198,184,.7)}
+  .hero-feat svg{color:var(--brand)}
+  .hero-art{height:436px;max-width:570px;width:100%;justify-self:center}
+  .hero-art .halo{
+    width:380px;height:380px;
+    background:radial-gradient(circle,rgba(0,223,114,.16),rgba(177,140,255,.1) 48%,transparent 70%);
+    filter:blur(14px);
+  }
+  .hero-art .art-orbit{display:none}
+
+  /* --- hero illustration --- */
+  .art-frame{
+    position:absolute;inset:3% -2% 2% 1%;z-index:0;opacity:.92;
+    clip-path:polygon(15% 0,100% 0,86% 100%,0 92%);
+    background:
+      repeating-linear-gradient(116deg,rgba(0,223,114,.055) 0 1px,transparent 1px 22px),
+      linear-gradient(145deg,rgba(0,223,114,.075),rgba(48,0,99,.16) 62%,rgba(255,150,63,.04));
+    border:1px solid rgba(0,223,114,.12);
+  }
+  .art-moon{
+    position:absolute;top:20px;right:34px;width:238px;height:238px;border-radius:50%;z-index:1;opacity:.95;
+    background:radial-gradient(circle at 36% 30%,#fffbe9 0%,#f2f1d9 34%,#d9e5c8 65%,#b3ccaa 100%);
+    box-shadow:0 0 90px rgba(0,223,114,.16),0 0 170px rgba(0,223,114,.06),inset -24px -16px 44px rgba(7,44,28,.3);
+  }
+  .art-moon::after{
+    content:"";position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle at 68% 74%,rgba(67,102,60,.12),transparent 42%);
+  }
+  .moon-crater{position:absolute;border-radius:50%;background:rgba(104,132,92,.13);box-shadow:inset 2px 3px 6px rgba(64,91,54,.16);z-index:1}
+  .moon-crater.c1{width:36px;height:36px;top:58px;left:48px}
+  .moon-crater.c2{width:18px;height:18px;top:52px;left:104px}
+  .moon-crater.c3{width:12px;height:12px;top:136px;left:146px}
+  .moon-crater.c4{width:9px;height:9px;top:104px;left:84px}
+  .art-web{position:absolute;top:-6px;left:-8px;width:142px;height:142px;z-index:3;pointer-events:none;color:rgba(217,255,224,.24);opacity:.8}
+  .art-web .web-lines{width:100%;height:100%}
+  .art-web .web-spider{position:absolute;right:16px;bottom:14px;width:26px;height:31px;color:rgba(217,255,224,.38);animation:spiderSway 5.5s ease-in-out infinite;transform-origin:50% 0}
+  .art-bat{position:absolute;color:#020d08;z-index:3;pointer-events:none;filter:drop-shadow(0 0 10px rgba(0,223,114,.12))}
+  .bat-a{width:56px;right:118px;top:46px;opacity:.92;animation:batFloat 7s ease-in-out infinite}
+  .bat-b{width:30px;left:45%;top:34px;opacity:.74;animation:batFloat 9s ease-in-out infinite reverse}
+  .bat-c{width:24px;left:14px;bottom:190px;opacity:.58;animation:batFloat 8s ease-in-out infinite}
+  .art-card{
+    border-radius:14px;background:linear-gradient(170deg,rgba(7,31,21,.97),rgba(3,16,11,.97));
+    box-shadow:0 34px 65px -32px #000;z-index:3;
+  }
+  .art-a{left:0;top:58px;transform:rotate(-7deg);border-color:rgba(255,150,63,.34);background:linear-gradient(170deg,rgba(46,26,12,.94),rgba(3,16,11,.97));box-shadow:0 34px 70px -34px rgba(255,150,63,.42)}
+  .art-f{right:0;bottom:54px;transform:rotate(6deg);border-color:rgba(177,140,255,.36);background:linear-gradient(170deg,rgba(30,20,52,.94),rgba(3,16,11,.97));box-shadow:0 34px 70px -34px rgba(177,140,255,.4)}
+  .art-a .art-head{color:var(--pumpkin)}
+  .art-f .art-head{color:var(--witch)}
+  .art-head{gap:6px;letter-spacing:.14em}
+  .art-head-icon{width:12px;height:12px;flex:0 0 auto}
+  .art-head-icon.bat-icon{width:16px;height:9px}
+  .art-count{color:rgba(242,239,227,.55)}
+  .art-line{background:rgba(242,239,227,.09)}
+  .art-av{background:rgba(242,239,227,.12)}
+  .art-a .art-row:nth-child(3) .art-av{background:rgba(255,150,63,.38)}
+  .art-f .art-row:nth-child(3) .art-av{background:rgba(177,140,255,.4)}
+  .art-tag{background:#050f0a;border-color:rgba(255,255,255,.1)}
+  .tag-lead{color:#ffd68a;border-color:rgba(255,200,87,.32);box-shadow:0 0 18px rgba(255,200,87,.12)}
+  .tag-sme{color:#d7c9ff;border-color:rgba(177,140,255,.32)}
+  .art-die{
+    top:-12px;width:84px;height:84px;border-radius:20px;
+    background:linear-gradient(145deg,#f7f2e1,#d6cfb9);color:#3b175c;
+    border:1px solid rgba(255,150,63,.32);
+    box-shadow:0 24px 55px -18px rgba(255,150,63,.35),0 0 46px rgba(177,140,255,.16),inset 0 1px 0 #fff;
+  }
+  .art-die svg{width:44px;height:44px}
+  .art-pumpkin{
+    position:absolute;left:48px;bottom:12px;width:98px;z-index:4;pointer-events:none;
+    filter:drop-shadow(0 0 24px rgba(255,150,63,.3));animation:pumpkinGlow 6s ease-in-out infinite;
+  }
+  .art-pumpkin svg{width:100%;height:auto}
+  .art-skyline{
+    position:absolute;left:-3%;right:-3%;bottom:-8px;width:106%;height:154px;color:#020d08;
+    z-index:2;opacity:.94;pointer-events:none;
+  }
+  .art-spark{background:var(--mint);box-shadow:0 0 8px rgba(217,255,224,.5)}
+  .art-spark.s3{width:2px;height:2px;top:54%;left:56%;background:#ff963f;box-shadow:0 0 8px rgba(255,150,63,.55);animation-delay:2.2s}
+
+  /* --- stage --- */
+  .stage-web{
+    position:absolute;top:-24px;right:-34px;width:300px;height:300px;color:rgba(217,255,224,.1);
+    pointer-events:none;z-index:0;
+  }
+  .stage-web svg{width:100%;height:100%}
+  .stage-inner{position:relative;z-index:1}
+  .stage-title-row{gap:10px}
+  .title-pumpkin{
+    width:24px;height:24px;flex:0 0 auto;color:var(--pumpkin);
+    filter:drop-shadow(0 0 12px rgba(255,150,63,.28));animation:pumpkinGlow 6s ease-in-out infinite;
+  }
+  .stage-title h2{font-family:var(--display);font-weight:400;font-size:27px;letter-spacing:-.025em;margin:4px 0 3px}
+  .stage-title-row h2{margin:0}
+  .stage-head .eyebrow{gap:7px}
+  .checks .check b{color:rgba(185,198,184,.8)}
+
+  /* --- draw console --- */
+  .draw-console{
+    border-radius:16px;border-color:rgba(0,223,114,.18);
+    background:
+      repeating-linear-gradient(118deg,rgba(0,223,114,.026) 0 1px,transparent 1px 22px),
+      radial-gradient(120% 160% at 100% 0%,rgba(177,140,255,.07),transparent 55%),
+      linear-gradient(180deg,rgba(8,34,23,.86),rgba(3,18,12,.82));
+    box-shadow:0 28px 60px -34px rgba(0,0,0,.9);
+  }
+  .draw-console::before{background:radial-gradient(80% 140% at 78% 50%,rgba(var(--dc-rgb),.16),transparent 62%)}
+  .draw-console[data-team="0"]{--dc-rgb:255,150,63;border-color:rgba(255,150,63,.34)}
+  .draw-console[data-team="1"]{--dc-rgb:177,140,255;border-color:rgba(177,140,255,.36)}
+  .draw-console.complete{border-color:rgba(0,223,114,.28)}
+  .draw-console.running .live-dot{background:var(--brand);box-shadow:0 0 10px rgba(0,223,114,.8)}
+  .draw-console.complete .live-dot{background:var(--brand);box-shadow:0 0 8px rgba(0,223,114,.6)}
+  .dc-slot{border-color:rgba(0,223,114,.12);background:rgba(2,14,9,.5);border-radius:12px}
+  .dc-slot.team-a{border-color:rgba(255,150,63,.46);background:linear-gradient(180deg,rgba(255,150,63,.09),rgba(2,14,9,.5))}
+  .dc-slot.team-f{border-color:rgba(177,140,255,.46);background:linear-gradient(180deg,rgba(177,140,255,.09),rgba(2,14,9,.5))}
+  .dc-slot.team-a .slot-avatar{background:linear-gradient(145deg,#ffcd9b,#ef7a1e);box-shadow:0 0 28px -6px rgba(255,150,63,.55),inset 0 1px 0 rgba(255,255,255,.4)}
+  .dc-slot.team-f .slot-avatar{background:linear-gradient(145deg,#e1d0ff,#8b5cf6);box-shadow:0 0 28px -6px rgba(177,140,255,.55),inset 0 1px 0 rgba(255,255,255,.4)}
+  .dc-slot.complete{border-color:rgba(0,223,114,.3);background:rgba(0,223,114,.05)}
+  .slot-avatar.glyph{
+    background:radial-gradient(circle at 38% 32%,rgba(255,190,130,.26),rgba(3,22,14,.94) 72%);
+    border:1px solid rgba(255,150,63,.28);color:#ffb066;box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .slot-avatar.glyph svg{width:28px;height:28px}
+  .slot-name{font-family:var(--display);font-weight:450;font-size:26px;letter-spacing:-.022em}
+  .slot-role{font-size:8.5px;letter-spacing:.12em;color:rgba(185,198,184,.6)}
+  .dc-slot.complete .slot-avatar{background:linear-gradient(145deg,#a6f8d8,#16c98a);color:#042017}
+  .draw-console[data-team="0"] .dest-value{color:var(--pumpkin)}
+  .draw-console[data-team="1"] .dest-value{color:var(--witch)}
+  .draw-console.complete .dest-value{color:#95f0c9}
+  #progressBar{background:linear-gradient(90deg,var(--pumpkin),var(--witch));opacity:.9}
+  .dc-eyebrow{color:rgba(185,198,184,.58)}
+  .dest-label{color:rgba(185,198,184,.5)}
+
+  /* --- team boards --- */
+  .team-panel{
+    --team:var(--pumpkin);--team-rgb:255,150,63;
+    border-radius:16px;border-color:rgba(var(--team-rgb),.2);
+    background:
+      repeating-linear-gradient(118deg,rgba(242,239,227,.016) 0 1px,transparent 1px 20px),
+      radial-gradient(120% 90% at 0% 0%,rgba(var(--team-rgb),.1),transparent 56%),
+      linear-gradient(180deg,rgba(8,32,22,.82),rgba(3,18,12,.8));
+    box-shadow:0 30px 60px -42px #000;
+  }
+  .team-panel[data-team="1"]{--team:var(--witch);--team-rgb:177,140,255}
+  .team-panel::after{display:none}
+  .team-watermark{
+    position:absolute;right:-10px;bottom:-34px;width:206px;height:206px;color:var(--team);
+    opacity:.055;z-index:0;pointer-events:none;transform:rotate(-7deg);
+  }
+  .team-watermark svg{width:100%;height:100%}
+  .team-panel[data-team="1"] .team-watermark{right:-26px;bottom:-20px;width:228px;opacity:.045;transform:rotate(6deg)}
+  .team-badge{
+    position:relative;isolation:isolate;width:42px;height:42px;border-radius:0;border:0;padding:0;
+    display:grid;place-items:center;background:rgba(var(--team-rgb),.32);
+    clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%);
+    font-family:var(--display);font-size:17px;font-weight:600;color:var(--team);box-shadow:none;
+  }
+  .team-badge::before{
+    content:"";position:absolute;inset:1px;z-index:-1;
+    background:linear-gradient(180deg,rgba(9,34,24,.98),rgba(4,20,13,.98));
+    clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%);
+  }
+  .team-count{
+    margin-left:auto;flex:0 0 auto;display:flex;align-items:baseline;gap:3px;padding:0;border:0;background:none;
+    font-family:var(--display);font-size:29px;font-weight:300;letter-spacing:-.035em;line-height:.9;color:var(--team);
+  }
+  .team-count b{font-weight:300}
+  .team-count i{font-family:var(--font);font-style:normal;font-size:9px;letter-spacing:.06em;opacity:.72}
+  .team-name-input{font-family:var(--display)!important;font-size:20px!important;font-weight:550!important;letter-spacing:-.015em}
+  .team-sub{color:rgba(185,198,184,.62)}
+  .team-sub b{color:var(--text-2)}
+  .team-head{border-bottom-color:rgba(0,223,114,.08)}
+  .lead-slot{border-color:rgba(255,200,87,.24);background:linear-gradient(120deg,rgba(255,200,87,.035),rgba(255,150,63,.01))}
+  .lead-slot.filled{border-color:rgba(255,200,87,.34);background:linear-gradient(120deg,rgba(255,200,87,.09),rgba(255,150,63,.025))}
+  .lead-avatar{background:linear-gradient(145deg,#ffe6a3,#e2a93d)}
+  .lead-kicker{color:rgba(255,200,87,.7)}
+  .member{border-color:rgba(0,223,114,.055);background:rgba(255,255,255,.028);border-radius:10px}
+  .member:hover{background:rgba(var(--team-rgb),.075);border-color:rgba(var(--team-rgb),.22)}
+  .member.is-sme{border-color:rgba(177,140,255,.12);background:rgba(177,140,255,.03)}
+  .member.is-sme:hover{background:rgba(177,140,255,.07);border-color:rgba(177,140,255,.24)}
+  .role-pill{color:#d8caff;border-color:rgba(177,140,255,.26);background:rgba(177,140,255,.1)}
+  .list-placeholder{border-color:rgba(0,223,114,.07);color:rgba(185,198,184,.55);background:rgba(0,223,114,.008)}
+
+  /* --- toast / dialog --- */
+  .toast{border-color:rgba(0,223,114,.2);background:rgba(5,28,18,.96);box-shadow:0 24px 50px -20px #000}
+  .toast.success{border-color:rgba(0,223,114,.3)}
+  .toast.error{border-color:rgba(255,107,94,.3);background:rgba(36,14,12,.97);color:#ffd9d2}
+  .toast .tdot{background:var(--brand)}
+  .toast.error .tdot{background:var(--danger)}
+  dialog#aboutDialog{background:#04170f;border-color:rgba(0,223,114,.2)}
+  .dlg-head{background:#04170f;border-bottom-color:rgba(0,223,114,.14)}
+  .dlg-ver{color:#ffbd8a;border-color:rgba(255,150,63,.3)}
+  .dlg-close{border-color:rgba(0,223,114,.16)}
+  .dlg-close:hover{color:var(--mint);background:rgba(0,223,114,.07);border-color:rgba(0,223,114,.3)}
+  .dlg-body h4{color:rgba(0,223,114,.66)}
+  .dlg-body b{color:var(--mint)}
+  .dlg-note{border-color:rgba(0,223,114,.14);background:rgba(0,223,114,.03)}
+  .dlg-credit{border-top-color:rgba(0,223,114,.12)}
+  .dlg-intro{margin:0 0 4px;padding:10px 12px;border:1px solid rgba(255,150,63,.18);border-radius:9px;background:rgba(255,150,63,.045);color:#efd5b4;font-size:10px;line-height:1.7}
+  .dlg-head .dlg-pumpkin{width:20px;height:20px;color:var(--pumpkin);flex:0 0 auto;filter:drop-shadow(0 0 10px rgba(255,150,63,.25))}
+  .drag-card{border-color:rgba(0,223,114,.5);background:rgba(5,28,18,.96)}
+  .drag-card .drag-ico{color:var(--brand);background:rgba(0,223,114,.1);border-color:rgba(0,223,114,.25)}
+
+  @keyframes starPulse{0%{opacity:.34}100%{opacity:.62}}
+  @keyframes batFloat{0%,100%{transform:translate(0,0) rotate(-3deg)}50%{transform:translate(-8px,-9px) rotate(4deg)}}
+  @keyframes spiderSway{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(6deg)}}
+  @keyframes pumpkinGlow{
+    0%,100%{filter:drop-shadow(0 0 18px rgba(255,150,63,.22))}
+    50%{filter:drop-shadow(0 0 30px rgba(255,150,63,.42))}
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width:1180px){
+    .shell{grid-template-columns:344px minmax(0,1fr)}
+    .stage{padding:22px 22px 38px}
+    .hero{gap:24px}
+    .hero-art{height:378px;transform:scale(.86);transform-origin:center}
+    .draw-console{grid-template-columns:148px minmax(0,1fr) 180px;gap:15px}
+    .slot-name{font-size:23px}
+    .team-count{font-size:27px}
+  }
+  @media (max-width:1120px) and (min-width:1021px){
+    .hero{grid-template-columns:1fr;max-width:700px;gap:8px;padding-top:10px}
+    .hero-art{height:400px;margin-top:8px;transform:scale(.86);transform-origin:center top}
+    .hero h2{font-size:clamp(40px,5.6vw,58px)}
+  }
+  @media (max-width:1020px){
+    body{overflow:auto}
+    .app{height:auto;min-height:100vh}
+    .topbar{position:sticky;top:0}
+    .shell{display:block}
+    .sidebar{overflow:visible;border-right:0;border-bottom:1px solid var(--line);padding:18px 18px 20px}
+    .stage{overflow:visible;padding:22px 18px 40px}
+    .stage-inner{min-height:0}
+    .hero{grid-template-columns:1fr;padding:10px 0 30px;gap:8px;max-width:720px}
+    .hero-art{height:392px;margin-top:8px;transform:scale(.86);transform-origin:center top}
+    .hero h2{font-size:clamp(38px,7.2vw,56px)}
+    #stageMain,#rolesPanel,#sourcePanel,#settingsPanel{scroll-margin-top:78px}
+    .sidebar{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:start}
+    .sidebar .panel{margin-top:0}
+    .panel + .panel{margin-top:0}
+    #rolesPanel{grid-column:1}
+    #settingsPanel{grid-column:2}
+    .side-foot{grid-column:1/-1;margin-top:14px}
+    #sourcePanel{grid-column:1/-1}
+    .role-list{max-height:238px}
+    .side-foot{padding-top:2px}
+  }
+  @media (max-width:900px){
+    .sidebar{display:block}
+    #rolesPanel,#settingsPanel{margin-top:12px}
+    .role-list{max-height:250px}
+    .arena{grid-template-columns:1fr}
+    .team-panel{min-height:300px}
+    .stage-web{display:none}
+    .team-count{font-size:25px}
+    .draw-console{grid-template-columns:minmax(0,1fr) 164px;gap:14px}
+    .dc-state{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 1px}
+    .dc-phase{margin:0;font-size:11px}
+    .dc-counter{margin:0}
+    .dc-side{align-items:flex-end}
+    .slot-name{font-size:22px}
+  }
+  @media (max-width:700px){
+    .haunt-strip{height:25px}
+    .haunt-strip-inner{padding:0 14px;font-size:7.5px;gap:7px}
+    .hs-sub{display:none}
+    .hs-date{font-size:7px;gap:5px}
+    .hs-date svg{width:10px;height:10px}
+    .hs-pumpkin{width:11px;height:11px}
+    .topbar{height:61px;padding:0 14px}
+    .brand-sub,.hw-badge{display:none}
+    .brand-name{gap:0;font-size:15px}
+    .top-right{gap:6px}
+    .pill.offline{display:none}
+    .pill.mono{max-width:166px;font-size:8.5px;height:26px;padding:0 8px}
+    .icon-btn{width:28px;height:28px}
+    .sidebar{padding:15px 14px 18px}
+    .stage{padding:17px 13px 32px}
+    .stage-head{align-items:flex-start;margin-bottom:13px}
+    .stage-title h2{font-size:22px}
+    .title-pumpkin{width:20px;height:20px}
+    .stage-title-row{gap:7px}
+    .stage-web{display:none}
+    .stage-actions{width:100%;justify-content:flex-start}
+    .stage-actions .btn{height:32px}
+    .stage-actions #exportXlsxBtn{flex:1 1 100%;margin-top:1px}
+    .stage-actions #exportXlsxBtn{margin-left:0}
+    .checks{gap:5px}
+    .draw-console{grid-template-columns:minmax(0,1fr);gap:11px;padding:14px 14px 17px;min-height:0}
+    .dc-state{grid-column:auto}
+    .dc-slot{height:68px;padding:0 13px;gap:11px}
+    .slot-avatar{width:42px;height:42px;border-radius:11px}
+    .slot-name{font-size:21px}
+    .dc-side{flex-direction:row;align-items:center;justify-content:space-between;text-align:left}
+    .dc-dest{text-align:left}
+    .dest-value{font-size:12px}
+    .arena{margin-top:12px;gap:12px}
+    .team-panel{padding:12px;border-radius:15px}
+    .team-head{padding-bottom:10px;margin-bottom:10px}
+    .team-name-input{font-size:17px!important}
+    .team-count{font-size:23px;padding:0;border:0;background:none}
+    .team-watermark{width:156px;height:156px;right:-8px;bottom:-26px}
+    .team-panel[data-team="1"] .team-watermark{width:170px;height:170px;right:-18px;bottom:-16px}
+    .field-grid{grid-template-columns:1fr}
+    .hero-art{display:none}
+    .hero{padding-bottom:20px}
+    .hero p{font-size:12px}
+    .hero h2{margin:12px 0 15px}
+    .hero-actions .btn{flex:1;min-width:140px}
+    .hero-feats{gap:7px 13px;margin-top:18px}
+    .detail-note{display:none}
+    .dlg-body{padding:14px 16px 18px}
+    .toast{bottom:18px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="haunt-strip" role="note">
+    <div class="haunt-strip-inner">
+      <svg class="hs-pumpkin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8M9.5 16.1c1.6.9 3.4.9 5 0" stroke="#03110B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="hs-brand">Trick or Team</span>
+      <span class="hs-dot"></span>
+      <span class="hs-sub">Strada Global · Halloween Team Draw</span>
+      <span class="hs-date">
+        <svg viewBox="0 0 64 34" fill="currentColor" aria-hidden="true"><path d="M32 14c-2.8-5.8-7.8-8.8-14.2-7.8 1.2 2.8 3.2 4.8 5.8 5.9-4.5 2.7-9.6 2.7-14.6.4 1.6 5.1 5.6 8.5 11.4 9.6-2.9 1.4-5.3 3.7-7 6.9 7.2-.2 12.4-2.8 15.6-7.4l3 6.4 3-6.4c3.2 4.6 8.4 7.2 15.6 7.4-1.7-3.2-4.1-5.5-7-6.9 5.8-1.1 9.8-4.5 11.4-9.6-5 2.3-10.1 2.3-14.6-.4 2.6-1.1 4.6-3.1 5.8-5.9C39.8 5.2 34.8 8.2 32 14Z"/></svg>
+        <span>OCT 31</span>
+      </span>
+    </div>
+  </div>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" width="38" height="38" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <path d="M20 4.5v31" stroke="#00DF72" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M4.5 20h31" stroke="#00DF72" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M9 9 31 31" stroke="#FF963F" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M31 9 9 31" stroke="#B18CFF" stroke-width="3.2" stroke-linecap="round"/>
+        <circle cx="20" cy="20" r="4.4" fill="#F2EFE3"/>
+        <circle cx="20" cy="20" r="1.8" fill="#03110B"/>
+      </svg>
+      <div class="brand-text">
+        <div class="brand-name">MemberSplit <span class="hw-badge"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8" stroke="#03110B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Halloween</span></div>
+        <div class="brand-sub">Strada · Seeded Team Draw</div>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="pill offline" title="不发起任何网络请求"><span class="pdot"></span>离线可用</span>
+      <button class="pill mono" id="topSeed" title="查看 / 修改种子"><span id="topSeedText">种子 · 20261020</span></button>
+      <button class="icon-btn" id="aboutBtn" title="使用说明" aria-label="使用说明">?</button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <section class="panel" id="sourcePanel">
+        <div class="panel-head">
+          <span class="step-tag">01</span>
+          <span class="panel-title">数据源</span>
+          <span class="panel-status" id="sourceStatus"><span class="sdot"></span><span id="sourceStatusText">未导入</span></span>
+        </div>
+
+        <div id="dzIdle">
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="选择 Excel 文件">
+            <span class="dz-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 18v-5"/><path d="m9.8 15.2 2.2-2.2 2.2 2.2"/></svg>
+            </span>
+            <span style="min-width:0">
+              <div class="dz-title">读取 Excel 名单</div>
+              <div class="dz-sub">拖入文件，或 <span class="dz-link">点击选择</span> · .xlsx / .xls / .csv</div>
+            </span>
+            <button class="btn small ghost" id="browseBtn" type="button" style="margin-left:auto;flex:0 0 auto">选择</button>
+          </div>
+          <button class="text-link dz-demo" id="demoBtn" type="button">没有文件？载入内置示例名单 →</button>
+        </div>
+
+        <div class="file-row" id="fileRow" hidden>
+          <span class="file-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+          </span>
+          <span class="file-copy">
+            <div class="file-name" id="fileName">—</div>
+            <div class="file-meta" id="fileMeta">—</div>
+          </span>
+          <span class="file-actions">
+            <button class="mini-btn" id="replaceFileBtn" title="更换文件" aria-label="更换文件">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+            </button>
+            <button class="mini-btn" id="fileClear" title="清除名单" aria-label="清除名单">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </span>
+        </div>
+
+        <div class="config-body" id="sourceConfig" hidden>
+          <div class="field">
+            <label for="sheetSelect">工作表</label>
+            <select id="sheetSelect"></select>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="startRowInput">起始行</label>
+              <input id="startRowInput" type="number" min="1" step="1" value="1">
+            </div>
+            <div class="field">
+              <label for="nameColSelect">姓名列</label>
+              <select id="nameColSelect"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="roleColSelect">角色列 <span class="tag-optional">可选</span></label>
+            <select id="roleColSelect"></select>
+          </div>
+          <div class="config-hint" id="configHint">载入文件后自动识别表头与姓名列。</div>
+        </div>
+        <div class="demo-note" id="demoNote" hidden>当前使用内置示例数据，无需读取配置。点击文件栏右侧的「更换」图标可导入自己的 Excel。</div>
+      </section>
+
+      <section class="panel" id="rolesPanel">
+        <div class="panel-head">
+          <span class="step-tag">02</span>
+          <span class="panel-title">角色配置</span>
+          <span class="panel-status" id="rolesStatus"><span class="sdot"></span><span id="rolesStatusText">待载入</span></span>
+        </div>
+        <div class="role-summary">
+          <span class="count-chip lead" id="leadCount"><span class="cdot"></span>Lead 0/2</span>
+          <span class="count-chip sme" id="smeCount"><span class="cdot"></span>SME 0/5</span>
+          <span class="roster-count" id="rosterCount">0 人</span>
+        </div>
+        <div class="role-tools">
+          <input class="role-search" id="roleSearch" type="text" placeholder="搜索姓名…" autocomplete="off" aria-label="搜索姓名">
+          <button class="role-reset" id="roleResetBtn" type="button" disabled title="按角色列重新识别">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+            重识别
+          </button>
+        </div>
+        <div class="role-list" id="roleList"></div>
+        <div class="role-empty" id="roleEmpty">导入名单后，可在这里核对并调整角色。<br>需要 2 名 Team Lead、5 名 SME。</div>
+        <div class="role-hint" id="roleHint">角色将决定分组约束。</div>
+      </section>
+
+      <section class="panel" id="settingsPanel">
+        <div class="panel-head">
+          <span class="step-tag">03</span>
+          <span class="panel-title">分组设置</span>
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="teamAName">队伍 1 名称</label>
+            <input id="teamAName" type="text" maxlength="28" value="Team A" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="teamFName">队伍 2 名称</label>
+            <input id="teamFName" type="text" maxlength="28" value="Team F" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="field">
+          <label for="seedInput">随机种子 <span class="tag-optional">留空 = 毫秒时间戳</span></label>
+          <div class="seed-row">
+            <input id="seedInput" type="text" autocomplete="off" spellcheck="false" placeholder="yyyyMMdd 或任意字符" aria-label="随机种子">
+            <button class="square-btn" id="seedTodayBtn" title="使用今天日期" aria-label="使用今天日期">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>
+            </button>
+            <button class="square-btn" id="seedDiceBtn" title="生成随机种子" aria-label="生成随机种子">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>
+            </button>
+          </div>
+          <div class="hint" id="seedHint">默认使用今天日期；留空时使用当前毫秒时间戳。</div>
+        </div>
+        <div class="field">
+          <div class="speed-head">
+            <label for="speedRange" style="margin:0">动画速率</label>
+            <span class="speed-value" id="speedLabel">1×</span>
+          </div>
+          <input type="range" id="speedRange" min="0.5" max="4" step="0.25" value="1" aria-label="动画速率">
+          <div class="speed-scale"><span>慢 · 0.5×</span><span>快 · 4×</span></div>
+          <div class="hint" id="speedHint">载入名单后显示预计时长。</div>
+        </div>
+        <div class="validation" id="validation"><span class="vdot"></span><span id="validationText">请先导入 Excel 名单，或载入示例数据。</span></div>
+        <button class="btn primary draw" id="startBtn" type="button" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.1" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.1" fill="currentColor" stroke="none"/></svg>
+          <span id="startBtnText">开始分组</span>
+        </button>
+      </section>
+
+      <div class="side-foot">
+        <span class="foot-note"><span class="lockdot"></span>数据仅在本机浏览器处理</span>
+        <button class="text-link" id="footerGuide" type="button">使用说明</button>
+      </div>
+    </aside>
+
+    <main class="stage" id="stage">
+      <div class="stage-web" aria-hidden="true">
+        <svg viewBox="0 0 220 220" fill="none" stroke="currentColor" stroke-width=".8">
+          <path d="M220 0 0 220M220 0 90 220M220 0 15 130M220 0 155 220M220 0 0 70M220 0H0"/>
+          <path d="M178 0c4 24 18 38 42 42M132 0c8 50 42 84 88 92M82 0c12 78 62 128 138 140M28 0C46 108 112 174 220 192"/>
+        </svg>
+      </div>
+      <div class="stage-inner">
+        <section class="hero" id="emptyState">
+          <div class="hero-copy">
+            <div class="eyebrow"><span class="eline"></span>Strada Global · Halloween Draw</div>
+            <h2>把名单，<br><span class="grad">交给万圣夜。</span></h2>
+            <p>Strada 万圣节限定抽签：读取 Excel 名单，按可复现的种子分成两队。Team Lead 分属两队，SME 按 2 / 3 落位，人数自动平衡。</p>
+            <div class="hero-actions">
+              <button class="btn primary" id="emptyBrowseBtn" type="button">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 18v-5"/><path d="m9.8 15.2 2.2-2.2 2.2 2.2"/></svg>
+                选择 Excel 文件
+                <span class="btn-arrow">→</span>
+              </button>
+              <button class="btn ghost" id="emptyDemoBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8" stroke="#03110B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                载入示例名单
+              </button>
+            </div>
+            <div class="hero-feats">
+              <span class="hero-feat"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>本地解析 · 离线可用</span>
+              <span class="hero-feat"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>种子可复现</span>
+              <span class="hero-feat"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>一键导出 CSV / Excel</span>
+            </div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="halo"></div>
+            <div class="art-frame"></div>
+            <div class="art-moon">
+              <span class="moon-crater c1"></span>
+              <span class="moon-crater c2"></span>
+              <span class="moon-crater c3"></span>
+              <span class="moon-crater c4"></span>
+            </div>
+            <div class="art-web">
+              <svg class="web-lines" viewBox="0 0 220 220" fill="none" stroke="currentColor" stroke-width=".8">
+                <path d="M0 0 220 220M0 0 130 220M0 0 205 130M0 0 65 220M0 0 220 70M0 0h220"/>
+                <path d="M42 0C38 24 24 38 0 42M88 0C80 50 46 84 0 92M138 0C126 78 76 128 0 140M192 0C174 108 108 174 0 192"/>
+              </svg>
+              <svg class="web-spider" viewBox="0 0 40 48" fill="none" stroke="currentColor" stroke-width="1.2">
+                <path d="M20 0v20" stroke-opacity=".5"/>
+                <ellipse cx="20" cy="28" rx="6" ry="7" fill="currentColor" opacity=".8"/>
+                <circle cx="20" cy="21.5" r="3.4" fill="currentColor"/>
+                <path d="M14 24 5 18M14 28 4 28M14 32 6 39M26 24l9-6M26 28h10M26 32l8 7"/>
+              </svg>
+            </div>
+            <svg class="art-bat bat-a" viewBox="0 0 64 34" fill="currentColor" aria-hidden="true"><path d="M32 14c-2.8-5.8-7.8-8.8-14.2-7.8 1.2 2.8 3.2 4.8 5.8 5.9-4.5 2.7-9.6 2.7-14.6.4 1.6 5.1 5.6 8.5 11.4 9.6-2.9 1.4-5.3 3.7-7 6.9 7.2-.2 12.4-2.8 15.6-7.4l3 6.4 3-6.4c3.2 4.6 8.4 7.2 15.6 7.4-1.7-3.2-4.1-5.5-7-6.9 5.8-1.1 9.8-4.5 11.4-9.6-5 2.3-10.1 2.3-14.6-.4 2.6-1.1 4.6-3.1 5.8-5.9C39.8 5.2 34.8 8.2 32 14Z"/></svg>
+            <svg class="art-bat bat-b" viewBox="0 0 64 34" fill="currentColor" aria-hidden="true"><path d="M32 14c-2.8-5.8-7.8-8.8-14.2-7.8 1.2 2.8 3.2 4.8 5.8 5.9-4.5 2.7-9.6 2.7-14.6.4 1.6 5.1 5.6 8.5 11.4 9.6-2.9 1.4-5.3 3.7-7 6.9 7.2-.2 12.4-2.8 15.6-7.4l3 6.4 3-6.4c3.2 4.6 8.4 7.2 15.6 7.4-1.7-3.2-4.1-5.5-7-6.9 5.8-1.1 9.8-4.5 11.4-9.6-5 2.3-10.1 2.3-14.6-.4 2.6-1.1 4.6-3.1 5.8-5.9C39.8 5.2 34.8 8.2 32 14Z"/></svg>
+            <svg class="art-bat bat-c" viewBox="0 0 64 34" fill="currentColor" aria-hidden="true"><path d="M32 14c-2.8-5.8-7.8-8.8-14.2-7.8 1.2 2.8 3.2 4.8 5.8 5.9-4.5 2.7-9.6 2.7-14.6.4 1.6 5.1 5.6 8.5 11.4 9.6-2.9 1.4-5.3 3.7-7 6.9 7.2-.2 12.4-2.8 15.6-7.4l3 6.4 3-6.4c3.2 4.6 8.4 7.2 15.6 7.4-1.7-3.2-4.1-5.5-7-6.9 5.8-1.1 9.8-4.5 11.4-9.6-5 2.3-10.1 2.3-14.6-.4 2.6-1.1 4.6-3.1 5.8-5.9C39.8 5.2 34.8 8.2 32 14Z"/></svg>
+            <div class="art-card art-a">
+              <div class="art-head">
+                <svg class="art-head-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="#8fd14f" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8" stroke="#03110B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                TEAM A<span class="art-count">13</span>
+              </div>
+              <div class="art-row"><span class="art-av"></span><span class="art-line" style="width:64%"></span></div>
+              <div class="art-row"><span class="art-av"></span><span class="art-line" style="width:45%"></span></div>
+              <div class="art-row"><span class="art-av lead-av"></span><span class="art-line" style="width:58%"></span></div>
+              <span class="art-tag tag-lead">LEAD</span>
+            </div>
+            <div class="art-card art-f">
+              <div class="art-head">
+                <svg class="art-head-icon bat-icon" viewBox="0 0 64 34" fill="currentColor" aria-hidden="true"><path d="M32 14c-2.8-5.8-7.8-8.8-14.2-7.8 1.2 2.8 3.2 4.8 5.8 5.9-4.5 2.7-9.6 2.7-14.6.4 1.6 5.1 5.6 8.5 11.4 9.6-2.9 1.4-5.3 3.7-7 6.9 7.2-.2 12.4-2.8 15.6-7.4l3 6.4 3-6.4c3.2 4.6 8.4 7.2 15.6 7.4-1.7-3.2-4.1-5.5-7-6.9 5.8-1.1 9.8-4.5 11.4-9.6-5 2.3-10.1 2.3-14.6-.4 2.6-1.1 4.6-3.1 5.8-5.9C39.8 5.2 34.8 8.2 32 14Z"/></svg>
+                TEAM F<span class="art-count">15</span>
+              </div>
+              <div class="art-row"><span class="art-av"></span><span class="art-line" style="width:52%"></span></div>
+              <div class="art-row"><span class="art-av sme-av"></span><span class="art-line" style="width:68%"></span></div>
+              <div class="art-row"><span class="art-av"></span><span class="art-line" style="width:40%"></span></div>
+              <span class="art-tag tag-sme">SME</span>
+            </div>
+            <div class="art-die">
+              <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <rect x="7" y="7" width="34" height="34" rx="10" stroke="#5b2a86" stroke-width="2.2"/>
+                <circle cx="17" cy="17" r="2.7" fill="#ff963f"/>
+                <circle cx="31" cy="31" r="2.7" fill="#ff963f"/>
+                <circle cx="31" cy="17" r="2.7" fill="#b18cff"/>
+                <circle cx="17" cy="31" r="2.7" fill="#b18cff"/>
+                <circle cx="24" cy="24" r="2" fill="#00df72"/>
+              </svg>
+            </div>
+            <div class="art-pumpkin">
+              <svg viewBox="0 0 120 110" fill="none" aria-hidden="true">
+                <ellipse cx="60" cy="98" rx="43" ry="6" fill="#000" opacity=".28"/>
+                <path d="M60 30c-3-10 2-16 10-18 1 8-2 14-7 18" stroke="#7cc35a" stroke-width="5" stroke-linecap="round"/>
+                <path d="M60 26c-27 0-44 17-44 38 0 24 19 38 44 38s44-14 44-38c0-21-17-38-44-38Z" fill="#ff7a1f"/>
+                <path d="M60 27c-12 0-19 17-19 37s7 36 19 36 19-16 19-36-7-37-19-37Z" fill="#ffa24c" opacity=".6"/>
+                <path d="M28 44c8 14 8 34 0 50M92 44c-8 14-8 34 0 50" stroke="#d85c11" stroke-width="2" opacity=".45"/>
+                <path d="m40 57 10 12 8-12M70 69l8-12 10 12" fill="#ffd25e"/>
+                <path d="M47 82c8 6 18 6 26 0" stroke="#ffd25e" stroke-width="5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <svg class="art-skyline" viewBox="0 0 720 180" preserveAspectRatio="none" aria-hidden="true">
+              <path fill="currentColor" d="M0 180V150h34v-26h18v26h26v-48h10v-26h12v26h8v48h20v-38h26v38h30v-60l36-28 36 28v60h18v-36h24v36h32v-52h12v-22h10v22h12v52h26v-34h30v34h26v-64l40-30 40 30v64h30v-40h26v40h26v-28h28v28h24v-18h26v48H0Z"/>
+              <g fill="#FF963F" opacity=".8">
+                <rect x="336" y="104" width="8" height="13" rx="1"/>
+                <rect x="372" y="104" width="8" height="13" rx="1"/>
+                <rect x="404" y="126" width="7" height="11" rx="1"/>
+              </g>
+              <g stroke="currentColor" stroke-width="4" stroke-linecap="round" fill="none" opacity=".9">
+                <path d="M96 150v-42m0 12-12-17m12 26 14-15m-14 4 9 13"/>
+                <path d="M596 150v-50m0 14-15-18m15 30 17-16m-17 2 10 12"/>
+              </g>
+              <path d="M0 158h720" stroke="#03110B" stroke-width="2" opacity=".5"/>
+            </svg>
+            <span class="art-spark s1"></span>
+            <span class="art-spark s2"></span>
+            <span class="art-spark s3"></span>
+          </div>
+        </section>
+
+        <section id="stageMain" hidden>
+          <div class="stage-head">
+            <div class="stage-title">
+              <div class="eyebrow"><span class="live-dot"></span>Halloween Draw Board</div>
+              <div class="stage-title-row">
+                <span class="title-pumpkin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="#8fd14f" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8M9.5 16.1c1.6.9 3.4.9 5 0" stroke="#03110B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <h2>万圣夜抽签台</h2>
+                <span class="status-pill" id="stageStatus" role="status" aria-live="polite"><span class="sdot"></span><span id="stageStatusText">准备就绪</span></span>
+              </div>
+              <div class="stage-meta" id="stageMeta"></div>
+            </div>
+            <div class="stage-actions">
+              <button class="btn primary" id="stageStartBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.1" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.1" fill="currentColor" stroke="none"/></svg>
+                开始分组
+              </button>
+              <button class="btn ghost" id="replayBtn" type="button" hidden>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+                重播
+              </button>
+              <button class="btn ghost" id="regroupBtn" type="button" hidden>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.1" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.1" fill="currentColor" stroke="none"/></svg>
+                换一组
+              </button>
+              <button class="btn ghost" id="copyBtn" type="button" hidden title="复制为表格文本">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>
+                复制
+              </button>
+              <button class="btn ghost" id="exportCsvBtn" type="button" hidden>CSV</button>
+              <button class="btn primary" id="exportXlsxBtn" type="button" hidden>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 19v2h16v-2"/></svg>
+                导出 Excel
+              </button>
+            </div>
+          </div>
+
+          <div class="stale-banner" id="staleBanner" hidden>
+            <span class="sicon"></span>
+            <span>名单、角色或种子已更新，当前结果已过期。</span>
+            <button class="btn" id="staleRegroupBtn" type="button">按新配置重新分组</button>
+          </div>
+
+          <div class="checks" id="checks">
+            <span class="check" id="checkLead"><span class="cico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Team Lead 分属两队</span><b id="checkLeadValue">2 Lead</b></span>
+            <span class="check" id="checkSme"><span class="cico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>SME 两组分配</span><b id="checkSmeValue">2 / 3</b></span>
+            <span class="check" id="checkBalance"><span class="cico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>人数差</span><b id="checkBalanceValue">≤ 3</b></span>
+          </div>
+
+          <section class="draw-console" id="drawConsole">
+            <div class="dc-state">
+              <div class="dc-eyebrow"><span class="live-dot"></span><span id="drawStatus">READY</span></div>
+              <div class="dc-phase" id="drawPhase">等待抽取</div>
+              <div class="dc-counter" id="drawCounter">0 / 0</div>
+            </div>
+            <div class="dc-slot" id="slotCard">
+              <div class="slot-avatar glyph" id="slotAvatar"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="#8fd14f" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8M9.5 16.1c1.6.9 3.4.9 5 0" stroke="#03110B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <div class="slot-copy">
+                <div class="slot-name" id="slotName">准备开始</div>
+                <div class="slot-role" id="slotRole">载入名单后开始</div>
+              </div>
+            </div>
+            <div class="dc-side">
+              <div class="dc-dest">
+                <div class="dest-label">Destination</div>
+                <div class="dest-value" id="destValue">等待开始</div>
+              </div>
+              <button class="btn ghost small skip-btn" id="skipBtn" type="button" hidden>跳过动画 →</button>
+            </div>
+            <div class="dc-progress"><div id="progressBar"></div></div>
+          </section>
+
+          <div class="arena">
+            <section class="team-panel" id="panelA" data-team="0">
+              <div class="team-watermark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="#8fd14f" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8M9.5 16.1c1.6.9 3.4.9 5 0" stroke="#03110B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <header class="team-head">
+                <div class="team-badge">A</div>
+                <div class="team-head-copy">
+                  <input class="team-name-input" id="teamATitle" maxlength="28" value="Team A" aria-label="队伍一名称" autocomplete="off" spellcheck="false">
+                  <div class="team-sub">
+                    <span class="l-lead"><span class="mini-dot"></span>Lead <b id="teamALeadCount">0</b></span>
+                    <span class="l-sme"><span class="mini-dot"></span>SME <b id="teamASmeCount">0</b></span>
+                    <span>成员 <b id="teamAMemberCount">0</b></span>
+                  </div>
+                </div>
+                <span class="team-count"><b id="teamACount">0</b><i>人</i></span>
+              </header>
+              <div class="lead-slot" id="teamALead"><span class="lead-placeholder">Team Lead · 待抽取</span></div>
+              <div class="team-list" id="teamAList"><div class="list-placeholder">成员将在这里落位</div></div>
+            </section>
+
+            <section class="team-panel" id="panelF" data-team="1">
+              <div class="team-watermark" aria-hidden="true"><svg viewBox="0 0 64 34" fill="currentColor" aria-hidden="true"><path d="M32 14c-2.8-5.8-7.8-8.8-14.2-7.8 1.2 2.8 3.2 4.8 5.8 5.9-4.5 2.7-9.6 2.7-14.6.4 1.6 5.1 5.6 8.5 11.4 9.6-2.9 1.4-5.3 3.7-7 6.9 7.2-.2 12.4-2.8 15.6-7.4l3 6.4 3-6.4c3.2 4.6 8.4 7.2 15.6 7.4-1.7-3.2-4.1-5.5-7-6.9 5.8-1.1 9.8-4.5 11.4-9.6-5 2.3-10.1 2.3-14.6-.4 2.6-1.1 4.6-3.1 5.8-5.9C39.8 5.2 34.8 8.2 32 14Z"/></svg></div>
+              <header class="team-head">
+                <div class="team-badge">F</div>
+                <div class="team-head-copy">
+                  <input class="team-name-input" id="teamFTitle" maxlength="28" value="Team F" aria-label="队伍二名称" autocomplete="off" spellcheck="false">
+                  <div class="team-sub">
+                    <span class="l-lead"><span class="mini-dot"></span>Lead <b id="teamFLeadCount">0</b></span>
+                    <span class="l-sme"><span class="mini-dot"></span>SME <b id="teamFSmeCount">0</b></span>
+                    <span>成员 <b id="teamFMemberCount">0</b></span>
+                  </div>
+                </div>
+                <span class="team-count"><b id="teamFCount">0</b><i>人</i></span>
+              </header>
+              <div class="lead-slot" id="teamFLead"><span class="lead-placeholder">Team Lead · 待抽取</span></div>
+              <div class="team-list" id="teamFList"><div class="list-placeholder">成员将在这里落位</div></div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"><span class="tline"><span class="tdot"></span><span id="toastText"></span></span></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="drag-overlay" id="dragOverlay" aria-hidden="true">
+  <div class="drag-card">
+    <div class="drag-ico">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 18v-5"/><path d="m9.8 15.2 2.2-2.2 2.2 2.2"/></svg>
+    </div>
+    <b>松开以导入名单</b>
+    <span>支持 .xlsx / .xls / .xlsm / .csv，解析完全在本机完成</span>
+  </div>
+</div>
+
+<dialog id="aboutDialog">
+  <div class="dlg-head">
+    <svg class="dlg-pumpkin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="#8fd14f" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8M9.5 16.1c1.6.9 3.4.9 5 0" stroke="#03110B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h3>MemberSplit</h3>
+    <span class="dlg-ver">v1.1 · HALLOWEEN</span>
+    <button class="dlg-close" id="aboutClose" type="button" aria-label="关闭">✕</button>
+  </div>
+  <div class="dlg-body">
+    <p class="dlg-intro">Strada 万圣节特别版 · <b>TRICK OR TEAM</b>。分组规则、种子复现和离线能力保持不变，界面换上万圣夜皮肤。</p>
+    <h4>怎么用</h4>
+    <ol>
+      <li>导入 Excel 或 CSV 名单，选择工作表、起始行、姓名列；角色列会自动识别，也可以手动标记。</li>
+      <li>核对角色：恰好 <b>2 名 Team Lead</b>、<b>5 名 SME</b>。不满足时无法开始。</li>
+      <li>设置队名与种子，点击“开始分组”。队名只影响展示与导出，不会改变随机结果。</li>
+      <li>动画结束后导出 Excel 或 CSV，或复制为表格文本。</li>
+    </ol>
+    <h4>分组保证</h4>
+    <ul>
+      <li><b>Team Lead</b>：2 名 Lead 必定分属两队，每队 1 名。</li>
+      <li><b>SME</b>：5 名 SME 在两组中按 2 / 3 分配。</li>
+      <li><b>人数补偿</b>：按总人数均分，并补偿角色基础人数造成的偏差，最终人数差为 0 或 1（规则上限 3）。</li>
+    </ul>
+    <h4>种子与复现</h4>
+    <p>默认种子是当天的 <b>yyyyMMdd</b>。留空时使用当前毫秒时间戳。相同名单、相同角色、相同种子会得到完全相同的分组；点击“换一组”会用新的时间戳种子重新抽取。</p>
+    <h4>离线与隐私</h4>
+    <p>这是一个单文件应用。Excel 解析、分组和导出全部在浏览器本地完成，不发起任何网络请求，也不会上传名单。可以断网使用，也可以拷贝到任何电脑上直接打开。</p>
+    <div class="dlg-note">动画速率可随时调整；抽取过程中可按 Esc 或点击“跳过动画”立即完成。表头识别基于常见中英文关键词，识别不准确时可在左侧手动指定列。</div>
+    <div class="dlg-credit">内置 SheetJS Community Edition v0.20.3（Apache-2.0）用于本地 Excel 解析与导出。界面字体使用系统字体，无外部资源依赖。</div>
+  </div>
+</dialog>
+
+<script>
+/*__XLSX_LIB__*/
+</script>
+<script>
+/*__APP_JS__*/
+</script>
+</body>
+</html>
