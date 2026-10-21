@@ -85,9 +85,9 @@ function verifyConstraints(board, total, label) {
   assert(await page.locator('#startBtn').isDisabled(), 'start is disabled with no roster');
   const today = (() => {
     const d = new Date();
-    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    return `${String(d.getFullYear()).slice(-2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
   })();
-  assert((await page.locator('#seedInput').inputValue()) === today, 'seed defaults to yyyyMMdd today');
+  assert((await page.locator('#seedInput').inputValue()) === today, 'seed defaults to yyMMdd today');
 
   console.log('\n[2] demo roster + grouping + reproducibility');
   await page.locator('#emptyDemoBtn').click();

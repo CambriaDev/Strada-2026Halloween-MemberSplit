@@ -1264,7 +1264,7 @@
         <div class="field">
           <label for="seedInput">随机种子 <span class="tag-optional">留空 = 毫秒时间戳</span></label>
           <div class="seed-row">
-            <input id="seedInput" type="text" autocomplete="off" spellcheck="false" placeholder="yyyyMMdd 或任意字符" aria-label="随机种子">
+            <input id="seedInput" type="text" autocomplete="off" spellcheck="false" placeholder="yyMMdd 或任意字符" aria-label="随机种子">
             <button class="square-btn" id="seedTodayBtn" title="使用今天日期" aria-label="使用今天日期">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>
             </button>
@@ -1554,7 +1554,7 @@
       <li><b>姓名参与随机</b>：每人在角色池内按 <span class="mono">hash(种子 + 姓名)</span> 排序后落位，同一批人改变名单行顺序不会改变结果。</li>
     </ul>
     <h4>种子与复现</h4>
-    <p>默认种子是当天的 <b>yyyyMMdd</b>。留空时使用当前毫秒时间戳。随机键由种子和姓名共同决定：同一批人（姓名、角色相同）与相同种子会得到完全相同的分组，名单行顺序不影响结果；改名会改变结果。点击“换一组”会用新的时间戳种子重新抽取。</p>
+    <p>默认种子是当天的 <b>yyMMdd</b>（如 2026 年 10 月 22 日为 <b>261022</b>）。留空时使用当前毫秒时间戳。随机键由种子和姓名共同决定：同一批人（姓名、角色相同）与相同种子会得到完全相同的分组，名单行顺序不影响结果；改名会改变结果。点击“换一组”会用新的时间戳种子重新抽取。</p>
     <h4>离线与隐私</h4>
     <p>这是一个单文件应用。Excel 解析、分组和导出全部在浏览器本地完成，不发起任何网络请求，也不会上传名单。可以断网使用，也可以拷贝到任何电脑上直接打开。</p>
     <div class="dlg-note">动画速率可随时调整；抽取过程中可按 Esc 或点击“跳过动画”立即完成。表头识别基于常见中英文关键词，识别不准确时可在左侧手动指定列。</div>
@@ -1703,7 +1703,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
   function pad2(n) { return String(n).padStart(2, '0'); }
   function todaySeed() {
     const d = new Date();
-    return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
+    return `${pad2(d.getFullYear() % 100)}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
   }
   function formatDateTime(d) {
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
