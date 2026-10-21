@@ -51,7 +51,8 @@ function assert(cond, msg) {
   let clip = '';
   try { clip = await page.evaluate(() => navigator.clipboard.readText()); } catch (e) { clip = ''; }
   if (clip) {
-    assert(clip.includes('队伍\t姓名\t角色'), 'clipboard contains TSV header');
+    assert(!clip.includes('队伍') && !clip.includes('Team Lead') && !clip.includes('SME'), 'clipboard contains names only');
+    assert(clip.split(/\r?\n/).every(line => line.split('\t').length === 3 && line.split('\t')[1] === ''), 'clipboard has A name, empty separator, F name');
     assert(clip.includes('Zoe Bennett') || clip.includes('Owen Price'), 'clipboard contains roster names');
   } else {
     console.log('  - clipboard read unavailable in this environment; toast path verified');

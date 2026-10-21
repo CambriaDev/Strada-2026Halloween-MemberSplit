@@ -3,7 +3,15 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const URL = pathToFileURL(path.resolve(__dirname, '..', 'MemberSplit.html')).href;
-const SIZES = [7, 8, 9, 10, 11, 50];
+const CASES = [
+  { sheet: 'N4-L2S2', n: 4, leads: 2, smes: 2 },
+  { sheet: 'N7-L2S5', n: 7, leads: 2, smes: 5 },
+  { sheet: 'N8-L3S2', n: 8, leads: 3, smes: 2 },
+  { sheet: 'N9-L4S3', n: 9, leads: 4, smes: 3 },
+  { sheet: 'N11-L5S4', n: 11, leads: 5, smes: 4 },
+  { sheet: 'N12-L3S9', n: 12, leads: 3, smes: 9 },
+  { sheet: 'N50-L7S15', n: 50, leads: 7, smes: 15 }
+];
 const SEEDS = 8;
 
 function assert(cond, msg) {
@@ -24,13 +32,18 @@ function assert(cond, msg) {
   await page.locator('#speedRange').evaluate(el => { el.value = '4'; el.dispatchEvent(new Event('input', { bubbles: true })); });
 
   let runs = 0;
-  for (const n of SIZES) {
-    await page.locator('#sheetSelect').selectOption(`N${n}`);
+  for (const c of CASES) {
+    await page.locator('#sheetSelect').selectOption(c.sheet);
     await page.waitForTimeout(450);
     const rosterCount = (await page.locator('#rosterCount').textContent()).trim();
-    assert(rosterCount === `${n} 人`, `N${n}: roster count ${rosterCount}`);
+    assert(rosterCount === `${c.n} 人`, `${c.sheet}: roster count ${rosterCount}`);
+    const smeChip = (await page.locator('#smeCount').textContent()).trim();
+    assert(smeChip.includes(`${c.smes}/≥2`), `${c.sheet}: SME chip shows ${c.smes}/≥2`);
+    const leadChip = (await page.locator('#leadCount').textContent()).trim();
+    assert(leadChip.includes(`${c.leads}/≥2`), `${c.sheet}: Lead chip shows ${c.leads}/≥2`);
     for (let s = 0; s < SEEDS; s++) {
-      await page.locator('#seedInput').fill(`stress-${n}-${s}`);
+      const seed = `stress-${c.sheet}-${s}`;
+      await page.locator('#seedInput').fill(seed);
       await page.locator('#startBtn').click();
       await page.waitForSelector('#skipBtn', { state: 'visible', timeout: 5000 });
       await page.locator('#skipBtn').click();
@@ -56,18 +69,21 @@ function assert(cond, msg) {
       const aAll = [...board.aLead, ...board.aMembers];
       const fAll = [...board.fLead, ...board.fMembers];
       const all = [...aAll, ...fAll];
-      assert(board.aCount + board.fCount === n, `N${n} seed ${s}: team totals`);
-      assert(aAll.length === board.aCount && fAll.length === board.fCount, `N${n} seed ${s}: counts match DOM`);
-      assert(new Set(all).size === n, `N${n} seed ${s}: all members unique`);
-      assert(board.aLead.length === 1 && board.fLead.length === 1, `N${n} seed ${s}: one lead per team`);
-      assert((board.aSme === 2 && board.fSme === 3) || (board.aSme === 3 && board.fSme === 2), `N${n} seed ${s}: SME 2/3`);
+      assert(board.aCount + board.fCount === c.n, `${c.sheet} seed ${s}: team totals`);
+      assert(aAll.length === board.aCount && fAll.length === board.fCount, `${c.sheet} seed ${s}: counts match DOM`);
+      assert(new Set(all).size === c.n, `${c.sheet} seed ${s}: all members unique`);
+      assert(board.aLead.length + board.fLead.length === c.leads, `${c.sheet} seed ${s}: all ${c.leads} leads placed`);
+      assert(Math.abs(board.aLead.length - board.fLead.length) <= 1, `${c.sheet} seed ${s}: lead diff <= 1`);
+      assert(board.aSme + board.fSme === c.smes, `${c.sheet} seed ${s}: all ${c.smes} SMEs placed`);
+      assert(Math.abs(board.aSme - board.fSme) <= 1, `${c.sheet} seed ${s}: SME diff <= 1`);
       const diff = Math.abs(board.aCount - board.fCount);
-      assert(diff <= 1, `N${n} seed ${s}: compensated diff <= 1 (got ${diff})`);
-      assert(board.checks.lead === '1 / 1', `N${n} seed ${s}: lead check`);
-      assert(board.checks.balance.startsWith(String(diff)), `N${n} seed ${s}: balance check reflects diff`);
+      assert(diff <= 1, `${c.sheet} seed ${s}: compensated diff <= 1 (got ${diff})`);
+      assert(board.checks.lead === `${board.aLead.length} / ${board.fLead.length}`, `${c.sheet} seed ${s}: lead check matches board`);
+      assert(board.checks.sme === `${board.aSme} / ${board.fSme}`, `${c.sheet} seed ${s}: SME check matches board`);
+      assert(board.checks.balance.startsWith(String(diff)), `${c.sheet} seed ${s}: balance check reflects diff`);
       runs++;
     }
-    console.log(`  ✓ N=${n}: ${SEEDS} seeds verified`);
+    console.log(`  ✓ ${c.sheet}: ${SEEDS} seeds verified`);
   }
   console.log(`\nSTRESS PASSED: ${runs} seeded draws checked; errors: ${errors.length ? errors.join(' | ') : 'none'}`);
   if (errors.length) throw new Error('browser errors');

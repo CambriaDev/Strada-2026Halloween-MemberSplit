@@ -9,8 +9,6 @@
   const MAX_ROWS = 5000;
   const MAX_COLS = 64;
   const MAX_FILE_SIZE = 30 * 1024 * 1024;
-  const ROLE_TEXT = { lead: 'Team Lead', sme: 'SME', member: 'Member' };
-  const ROLE_SHORT = { lead: 'TEAM LEAD', sme: 'SME', member: 'MEMBER' };
   const ROLE_RANK = { lead: 0, sme: 1, member: 2 };
 
   const PUMPKIN_MARK = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="#8fd14f" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8M9.5 16.1c1.6.9 3.4.9 5 0" stroke="#03110B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -156,23 +154,29 @@
       h ^= str.charCodeAt(i);
       h = Math.imul(h, 16777619);
     }
+    h ^= h >>> 16;
+    h = Math.imul(h, 0x85ebca6b);
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35);
+    h ^= h >>> 16;
     return h >>> 0;
   }
-  function mulberry32(a) {
-    return function () {
-      let t = a += 0x6D2B79F5;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+  // Names are the only stable identity when a roster is reordered, so draw
+  // keys come from the seed and the name, never from the row position.
+  function seedKey(seed, salt, name) {
+    return hashString(`${seed}\u0000${salt}\u0000${name}`);
   }
-  function shuffle(arr, rng) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      const t = a[i]; a[i] = a[j]; a[j] = t;
-    }
-    return a;
+  function orderBySeed(pool, seed, salt) {
+    return pool.slice().sort((a, b) => {
+      const diff = seedKey(seed, salt, a.name) - seedKey(seed, salt, b.name);
+      if (diff) return diff;
+      // Hash collisions are broken by name; two entries with the same name
+      // are indistinguishable in the output.
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
+  }
+  function seedCoin(seed, label) {
+    return (hashString(`${seed}\u0000${label}`) & 1) === 1;
   }
   function initials(name) {
     const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -406,7 +410,7 @@
     el.nameColSelect.addEventListener('change', onNameColChange);
     el.roleColSelect.addEventListener('change', onRoleColChange);
 
-    el.roleList.addEventListener('change', onRoleSelect);
+    el.roleList.addEventListener('click', onRolePick);
     el.roleSearch.addEventListener('input', applyRoleFilter);
     el.roleResetBtn.addEventListener('click', resetRolesFromColumn);
 
@@ -936,7 +940,7 @@
     const frag = document.createDocumentFragment();
     for (const p of state.participants) {
       const row = document.createElement('div');
-      row.className = `role-row ${p.role}`;
+      row.className = `role-row role-${p.role}`;
       row.dataset.pid = p.id;
 
       const av = document.createElement('span');
@@ -949,17 +953,21 @@
       name.textContent = p.name;
       name.title = p.name;
 
-      const sel = document.createElement('select');
-      sel.setAttribute('aria-label', `${p.name} 的角色`);
+      const group = document.createElement('div');
+      group.className = 'role-swatches';
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', `${p.name} 的角色`);
       [['member', 'Member'], ['lead', 'Team Lead'], ['sme', 'SME']].forEach(([v, t]) => {
-        const o = document.createElement('option');
-        o.value = v;
-        o.textContent = t;
-        sel.appendChild(o);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `role-swatch role-${v}`;
+        btn.dataset.role = v;
+        btn.setAttribute('aria-label', t);
+        btn.setAttribute('aria-pressed', String(p.role === v));
+        group.appendChild(btn);
       });
-      sel.value = p.role;
 
-      row.append(av, name, sel);
+      row.append(av, name, group);
       frag.appendChild(row);
     }
     el.roleList.appendChild(frag);
@@ -975,15 +983,18 @@
     });
   }
 
-  function onRoleSelect(e) {
-    const sel = e.target.closest('select');
-    if (!sel) return;
-    const row = sel.closest('.role-row');
+  function onRolePick(e) {
+    const btn = e.target.closest('.role-swatch');
+    if (!btn) return;
+    const row = btn.closest('.role-row');
     if (!row) return;
     const p = state.participants.find(x => x.id === row.dataset.pid);
-    if (!p) return;
-    p.role = sel.value;
-    row.className = `role-row ${p.role}`;
+    if (!p || p.role === btn.dataset.role) return;
+    p.role = btn.dataset.role;
+    row.className = `role-row role-${p.role}`;
+    row.querySelectorAll('.role-swatch').forEach(b => {
+      b.setAttribute('aria-pressed', String(b === btn));
+    });
     updateRoleSummary();
     refreshValidation();
     if (state.plan) markStale(); else refreshStage();
@@ -993,34 +1004,34 @@
     const leads = state.participants.filter(p => p.role === 'lead').length;
     const smes = state.participants.filter(p => p.role === 'sme').length;
     const n = state.participants.length;
-    const valid = leads === 2 && smes === 5;
+    const valid = leads >= 2 && smes >= 2;
 
-    el.leadCount.textContent = `Lead ${leads}/2`;
-    el.smeCount.textContent = `SME ${smes}/5`;
-    el.leadCount.className = 'count-chip lead' + (leads === 2 ? ' ok' : '');
-    el.smeCount.className = 'count-chip sme' + (smes === 5 ? ' ok' : '');
+    el.leadCount.innerHTML = `<span class="cdot"></span>${leads}/≥2`;
+    el.smeCount.innerHTML = `<span class="cdot"></span>${smes}/≥2`;
+    el.leadCount.className = 'count-chip lead' + (leads >= 2 ? ' ok' : '');
+    el.smeCount.className = 'count-chip sme' + (smes >= 2 ? ' ok' : '');
     el.rosterCount.textContent = `${n} 人`;
 
     if (n === 0) {
       el.rolesStatusText.textContent = '待载入';
       el.rolesStatus.classList.remove('live');
     } else {
-      el.rolesStatusText.textContent = `${leads} Lead · ${smes} SME`;
+      el.rolesStatusText.innerHTML = `<i class="rs-dot lead"></i><span class="rs-num lead">${leads}</span><i class="rs-dot sme"></i><span class="rs-num sme">${smes}</span>`;
       el.rolesStatus.classList.toggle('live', valid);
     }
 
     let hint = '';
     let cls = 'role-hint';
     if (n === 0) {
-      hint = '角色将决定分组约束：2 名 Team Lead、5 名 SME。';
+      hint = '角色将决定分组约束：金色与紫色角色各至少 2 名。';
     } else if (valid) {
-      hint = '角色配置符合要求：2 Team Lead / 5 SME。';
+      hint = '角色配置符合要求：金色 ≥ 2 / 紫色 ≥ 2。';
       cls += ' ok';
     } else if (state.roleCol < 0) {
-      hint = `未指定角色列。请在列表中手动设置 2 名 Team Lead、5 名 SME（当前 Lead ${leads}、SME ${smes}）。`;
+      hint = `未指定角色列。请在列表中手动设置：金色与紫色角色各至少 2 名（当前金色 ${leads}、紫色 ${smes}）。`;
       cls += ' warn';
     } else {
-      hint = `需要恰好 2 名 Team Lead 与 5 名 SME（当前 Lead ${leads}、SME ${smes}）。可直接在列表中调整。`;
+      hint = `需要金色与紫色角色各至少 2 名（当前金色 ${leads}、紫色 ${smes}）。可直接在列表中调整。`;
       cls += ' warn';
     }
     el.roleHint.textContent = hint;
@@ -1066,10 +1077,10 @@
     const leads = state.participants.filter(p => p.role === 'lead').length;
     const smes = state.participants.filter(p => p.role === 'sme').length;
     if (n === 0) return { ok: false, msg: '请先导入 Excel 名单，或载入内置示例名单。' };
-    if (n < 7) return { ok: false, msg: `名单至少需要 7 名成员（当前 ${n} 人）。` };
-    if (leads !== 2) return { ok: false, msg: `Team Lead 需要恰好 2 名（当前 ${leads} 名）。` };
-    if (smes !== 5) return { ok: false, msg: `SME 需要恰好 5 名（当前 ${smes} 名）。` };
-    return { ok: true, msg: `名单与角色已就绪 · ${n} 人 · 2 Lead / 5 SME。` };
+    if (n < 4) return { ok: false, msg: `名单至少需要 4 名成员（金色与紫色角色各 2 名，当前 ${n} 人）。` };
+    if (leads < 2) return { ok: false, msg: `金色角色至少需要 2 名（当前 ${leads} 名）。` };
+    if (smes < 2) return { ok: false, msg: `紫色角色至少需要 2 名（当前 ${smes} 名）。` };
+    return { ok: true, msg: `名单与角色已就绪 · ${n} 人 · 金色 ${leads} / 紫色 ${smes}。` };
   }
 
   function refreshValidation() {
@@ -1132,7 +1143,7 @@
     if (!state.seedInput.trim()) {
       el.seedHint.textContent = '留空：开始分组时使用当前毫秒时间戳。';
     } else {
-      el.seedHint.textContent = '相同名单、角色与种子 = 相同结果。';
+      el.seedHint.textContent = '相同姓名、角色与种子 = 相同结果（与名单顺序无关）。';
     }
   }
 
@@ -1149,37 +1160,44 @@
   /* ---------------- group planning ---------------- */
 
   function buildPlan(participants, seedUsed, seedWasBlank) {
-    const rng = mulberry32(hashString(String(seedUsed)));
-    const leads = shuffle(participants.filter(p => p.role === 'lead'), rng);
-    const smes = shuffle(participants.filter(p => p.role === 'sme'), rng);
-    const members = shuffle(participants.filter(p => p.role === 'member'), rng);
+    const seed = String(seedUsed);
+    const leads = orderBySeed(participants.filter(p => p.role === 'lead'), seed, 'lead');
+    const smes = orderBySeed(participants.filter(p => p.role === 'sme'), seed, 'sme');
+    const members = orderBySeed(participants.filter(p => p.role === 'member'), seed, 'member');
 
-    if (leads.length !== 2 || smes.length !== 5) throw new Error('角色数量不符合要求');
+    if (leads.length < 2 || smes.length < 2) throw new Error('角色数量不符合要求');
 
     const total = participants.length;
-    const aGetsThree = rng() < 0.5;
+    const leadExtraA = seedCoin(seed, 'lead-split');
+    // When both pools are odd, give the two odd extras to opposite teams so
+    // the role bases stay within one person of each other.
+    const smeExtraA = leads.length % 2 === 1 && smes.length % 2 === 1
+      ? !leadExtraA
+      : seedCoin(seed, 'sme-split');
+    const leadCountA = Math.floor(leads.length / 2) + (leads.length % 2 === 1 && leadExtraA ? 1 : 0);
+    const smeCountA = Math.floor(smes.length / 2) + (smes.length % 2 === 1 && smeExtraA ? 1 : 0);
     const teamOf = new Map();
 
-    // Leads must be split across both teams.
-    teamOf.set(leads[0].id, 0);
-    teamOf.set(leads[1].id, 1);
-
-    // Five SMEs: one team gets 3, the other 2.
+    // Each role pool is split as evenly as possible, so the two teams never
+    // differ by more than one lead or one SME.
+    leads.forEach((p, i) => {
+      teamOf.set(p.id, i < leadCountA ? 0 : 1);
+    });
     smes.forEach((p, i) => {
-      const t = aGetsThree ? (i < 3 ? 0 : 1) : (i < 2 ? 0 : 1);
-      teamOf.set(p.id, t);
+      teamOf.set(p.id, i < smeCountA ? 0 : 1);
     });
 
-    const baseA = 1 + (aGetsThree ? 3 : 2);
-    const baseF = 7 - baseA;
-    // Even rosters split exactly in half; odd rosters randomly give one team
-    // the extra seat. Role bases can force a one-person difference at n = 7.
-    let targetA = Math.floor(total / 2) + (total % 2 === 1 && rng() < 0.5 ? 1 : 0);
+    const baseA = leadCountA + smeCountA;
+    const baseF = (leads.length - leadCountA) + (smes.length - smeCountA);
+    // Even rosters split exactly in half; odd rosters give one team the extra
+    // seat by a seed-derived coin. Role bases can force a one-person difference
+    // when there are too few members to compensate.
+    let targetA = Math.floor(total / 2) + (total % 2 === 1 && seedCoin(seed, 'odd-extra') ? 1 : 0);
     targetA = Math.max(baseA, Math.min(total - baseF, targetA));
 
     // Compensation: fill towards balanced target sizes, never exceeding the
     // role bases. The final difference is 0 or 1 (well within the <= 3 rule).
-    const memberOrder = shuffle(members, rng);
+    const memberOrder = orderBySeed(members, seed, 'member-fill');
     const needA = targetA - baseA;
     memberOrder.forEach((p, i) => {
       teamOf.set(p.id, i < needA ? 0 : 1);
@@ -1192,15 +1210,18 @@
       const cp = copies.get(p.id);
       (teamOf.get(p.id) === 0 ? teamA : teamF).push(cp);
     }
-    const sorter = (a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role] || a.index - b.index;
+    // Presentation order is name-based too, so exports do not change when the
+    // source roster is reordered.
+    const sorter = (a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role]
+      || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     teamA.sort(sorter);
     teamF.sort(sorter);
 
-    // Reveal order is separately shuffled so team assignment does not clump.
+    // Reveal order gets its own seed keys so team assignment does not clump.
     const revealOrder = [];
-    shuffle(members, rng).forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
-    shuffle(smes, rng).forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
-    shuffle(leads, rng).forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
+    orderBySeed(members, seed, 'reveal-member').forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
+    orderBySeed(smes, seed, 'reveal-sme').forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
+    orderBySeed(leads, seed, 'reveal-lead').forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
 
     const leadA = teamA.filter(p => p.role === 'lead').length;
     const leadF = teamF.filter(p => p.role === 'lead').length;
@@ -1208,8 +1229,8 @@
     const smeF = teamF.filter(p => p.role === 'sme').length;
     const diff = Math.abs(teamA.length - teamF.length);
     const checks = {
-      leads: leadA === 1 && leadF === 1,
-      smes: (smeA === 2 && smeF === 3) || (smeA === 3 && smeF === 2),
+      leads: leadA + leadF === leads.length && Math.abs(leadA - leadF) <= 1,
+      smes: smeA + smeF === smes.length && Math.abs(smeA - smeF) <= 1,
       balance: diff <= 3
     };
     if (!checks.leads || !checks.smes || !checks.balance) throw new Error('约束校验失败');
@@ -1338,7 +1359,8 @@
       const smes = state.participants.filter(p => p.role === 'sme').length;
       setStageMeta([
         `${state.participants.length} 人`,
-        `${leads} Lead / ${smes} SME`,
+        { text: `● ${leads}`, cls: 'meta-role meta-lead' },
+        { text: `● ${smes}`, cls: 'meta-role meta-sme' },
         { text: `种子 ${state.seedInput.trim() || '时间戳（留空）'}`, cls: 'mono' }
       ]);
     } else {
@@ -1386,8 +1408,8 @@
       el.checkSmeValue.textContent = '—';
       el.checkBalanceValue.textContent = '—';
     } else {
-      el.checkLeadValue.textContent = '2 Lead';
-      el.checkSmeValue.textContent = '2 / 3';
+      el.checkLeadValue.textContent = '差 ≤ 1';
+      el.checkSmeValue.textContent = '差 ≤ 1';
       el.checkBalanceValue.textContent = '≤ 3';
     }
   }
@@ -1413,7 +1435,7 @@
     ];
     panels.forEach(p => {
       p.lead.className = 'lead-slot';
-      p.lead.innerHTML = '<span class="lead-placeholder">Team Lead · 待抽取</span>';
+      p.lead.innerHTML = '<span class="lead-placeholder">待抽取</span>';
       p.list.innerHTML = '<div class="list-placeholder">成员将在这里落位</div>';
       p.count.textContent = '0';
     });
@@ -1444,7 +1466,8 @@
 
   function fillLeadSlot(teamIdx, person, animate) {
     const slot = teamIdx === 0 ? el.teamALead : el.teamFLead;
-    slot.innerHTML = '';
+    const placeholder = slot.querySelector('.lead-placeholder');
+    if (placeholder) placeholder.remove();
     slot.className = 'lead-slot filled';
     const card = document.createElement('div');
     card.className = 'lead-card' + (animate ? ' enter' : '');
@@ -1453,18 +1476,12 @@
     av.textContent = initials(person.name);
     const copy = document.createElement('div');
     copy.className = 'lead-copy';
-    const kicker = document.createElement('div');
-    kicker.className = 'lead-kicker';
-    kicker.textContent = 'Team Lead';
     const name = document.createElement('div');
     name.className = 'lead-name';
     name.textContent = person.name;
     name.title = person.name;
-    copy.append(kicker, name);
-    const crown = document.createElement('span');
-    crown.className = 'lead-crown';
-    crown.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3.5 8.5 8 12l4-7 4 7 4.5-3.5-1.6 9H5.1z"/><path d="M5.5 20h13"/></svg>';
-    card.append(av, copy, crown);
+    copy.appendChild(name);
+    card.append(av, copy);
     slot.appendChild(card);
   }
 
@@ -1500,12 +1517,6 @@
     name.title = person.name;
 
     card.append(av, name);
-    if (person.role === 'sme') {
-      const pill = document.createElement('span');
-      pill.className = 'role-pill';
-      pill.textContent = 'SME';
-      card.appendChild(pill);
-    }
     return card;
   }
 
@@ -1602,11 +1613,11 @@
 
       const entry = plan.revealOrder[i];
       const timing = computeTiming(plan.total);
-      el.drawPhase.textContent = entry.person.role === 'sme' ? '抽取 SME' : entry.person.role === 'lead' ? '抽取 Team Lead' : '抽取成员';
+      el.drawPhase.textContent = '抽取成员';
       el.destValue.textContent = '抽取中…';
       el.drawConsole.removeAttribute('data-team');
-      el.slotCard.className = 'dc-slot rolling';
-      el.slotRole.textContent = ROLE_SHORT[entry.person.role];
+      el.slotCard.className = `dc-slot rolling role-${entry.person.role}`;
+      el.slotRole.textContent = '抽取中…';
 
       const flipEvery = clamp(timing.roll / 3, 30, 85);
       clearInterval(state.anim.rollTimer);
@@ -1617,7 +1628,6 @@
         clearSlotGlyph();
         el.slotAvatar.textContent = initials(p.name);
         el.slotAvatar.style.setProperty('--h', String(hueFor(p.name)));
-        el.slotRole.textContent = ROLE_SHORT[p.role];
       }, flipEvery);
 
       state.anim.timer = setTimeout(() => {
@@ -1645,12 +1655,12 @@
     const idx = entry.team;
     const tName = teamName(idx);
     el.drawConsole.dataset.team = String(idx);
-    el.slotCard.className = `dc-slot locked team-${idx === 0 ? 'a' : 'f'}`;
+    el.slotCard.className = `dc-slot locked team-${idx === 0 ? 'a' : 'f'} role-${entry.person.role}`;
     el.slotName.textContent = entry.person.name;
     clearSlotGlyph();
     el.slotAvatar.textContent = initials(entry.person.name);
     el.slotAvatar.style.removeProperty('--h');
-    el.slotRole.textContent = ROLE_SHORT[entry.person.role];
+    el.slotRole.textContent = '已入队';
     el.destValue.textContent = `→ ${tName}`;
     addMember(idx, entry.person, true);
   }
@@ -1715,9 +1725,17 @@
 
   function exportRows() {
     const plan = state.plan;
-    const rows = [['队伍', '姓名', '角色']];
-    plan.teamA.forEach(p => rows.push([teamName(0), p.name, ROLE_TEXT[p.role]]));
-    plan.teamF.forEach(p => rows.push([teamName(1), p.name, ROLE_TEXT[p.role]]));
+    const rows = [];
+    const rowCount = Math.max(plan.teamA.length, plan.teamF.length);
+    // Side-by-side layout: Team A names in column A, an empty separator in
+    // column B, Team F names in column C. No role column and no header row.
+    for (let i = 0; i < rowCount; i++) {
+      rows.push([
+        plan.teamA[i] ? plan.teamA[i].name : '',
+        '',
+        plan.teamF[i] ? plan.teamF[i].name : ''
+      ]);
+    }
     return rows;
   }
 
@@ -1726,8 +1744,8 @@
     const source = state.sourceKind === 'demo' ? '内置示例名单' : state.fileName || '—';
     return [
       ['MemberSplit 分组信息', ''],
-      ['队伍一', `${teamName(0)}（${plan.counts.a} 人｜Lead 1｜SME ${plan.counts.smeA}）`],
-      ['队伍二', `${teamName(1)}（${plan.counts.f} 人｜Lead 1｜SME ${plan.counts.smeF}）`],
+      ['队伍一', `${teamName(0)}（${plan.counts.a} 人｜Lead ${plan.counts.leadA}｜SME ${plan.counts.smeA}）`],
+      ['队伍二', `${teamName(1)}（${plan.counts.f} 人｜Lead ${plan.counts.leadF}｜SME ${plan.counts.smeF}）`],
       ['人数差', `${plan.counts.diff}（规则上限 3）`],
       ['种子', `${plan.seedUsed}${plan.seedWasBlank ? '（留空，使用毫秒时间戳）' : ''}`],
       ['生成时间', formatDateTime(plan.generatedAt)],
@@ -1736,9 +1754,9 @@
       ['起始行', state.sourceKind === 'file' ? state.startRow : '—'],
       ['姓名列', state.sourceKind === 'file' ? columnName(state.nameCol) : '内置数据'],
       ['角色列', state.sourceKind === 'file' ? (state.roleCol >= 0 ? columnName(state.roleCol) : '手动指定') : '内置数据'],
-      ['约束', 'Team Lead 分属两队；SME 2 / 3；人数差 ≤ 3'],
-      ['复现说明', '相同名单、角色与种子会得到完全相同的分组结果'],
-      ['工具', 'MemberSplit v1.1 · Halloween Edition · 离线运行']
+      ['约束', 'Team Lead 两队人数差 ≤ 1；SME 两队人数差 ≤ 1；人数差 ≤ 3'],
+      ['复现说明', '相同姓名、角色与种子会得到相同结果，与名单行顺序无关；改名会改变结果'],
+      ['工具', 'MemberSplit v1.2 · Halloween Edition · 离线运行']
     ];
   }
 
@@ -1765,8 +1783,7 @@
     try {
       const rows = exportRows();
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [{ wch: 20 }, { wch: 26 }, { wch: 14 }];
-      ws['!autofilter'] = { ref: `A1:C${rows.length}` };
+      ws['!cols'] = [{ wch: 22 }, { wch: 4 }, { wch: 22 }];
       const wsInfo = XLSX.utils.aoa_to_sheet(exportInfoRows());
       wsInfo['!cols'] = [{ wch: 18 }, { wch: 72 }];
       const wb = XLSX.utils.book_new();

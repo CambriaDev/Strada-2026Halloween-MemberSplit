@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="MemberSplit · Strada Halloween Edition — 离线 Excel 随机分组工具：种子可复现，Team Lead 分属两队，SME 2/3，人数自动补偿。">
+<meta name="description" content="MemberSplit · Strada Halloween Edition — 离线 Excel 随机分组工具：种子可复现，Team Lead / SME 两队人数差 ≤1，人数自动补偿。">
 <title>MemberSplit · 万圣夜抽签</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 38 38'%3E%3Crect width='38' height='38' rx='9' fill='%2303110B'/%3E%3Cpath d='M19 6v26M6 19h26' stroke='%2300DF72' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M9.6 9.6l18.8 18.8M28.4 9.6 9.6 28.4' stroke='%23FF963F' stroke-width='3.2' stroke-linecap='round'/%3E%3Ccircle cx='19' cy='19' r='4' fill='%23F2EFE3'/%3E%3C/svg%3E">
 <style>
@@ -179,6 +179,11 @@
   .panel-status .sdot{width:5px;height:5px;border-radius:50%;background:var(--text-3);flex:0 0 auto;transition:.2s}
   .panel-status.live{color:#95ecd1}
   .panel-status.live .sdot{background:var(--a);box-shadow:0 0 8px rgba(var(--a-rgb),.6)}
+  .panel-status .rs-dot{display:inline-block;width:5px;height:5px;border-radius:50%;vertical-align:middle;margin-right:3px}
+  .panel-status .rs-dot.lead{background:var(--gold)}
+  .panel-status .rs-dot.sme{background:var(--violet);margin-left:7px}
+  .panel-status .rs-num.lead{color:var(--gold)}
+  .panel-status .rs-num.sme{color:var(--violet)}
 
   .dropzone{
     border:1px dashed var(--line-2);border-radius:12px;padding:13px 14px;
@@ -264,6 +269,8 @@
   .count-chip.lead{color:#e8ca83;border-color:rgba(var(--gold-rgb),.2);background:rgba(var(--gold-rgb),.05)}
   .count-chip.sme{color:#bcbdff;border-color:rgba(var(--violet-rgb),.2);background:rgba(var(--violet-rgb),.05)}
   .count-chip.ok{color:#98efd4;border-color:rgba(var(--a-rgb),.22);background:rgba(var(--a-rgb),.055)}
+  .count-chip.lead.ok{color:#ffd68a;border-color:rgba(var(--gold-rgb),.34);background:rgba(var(--gold-rgb),.08)}
+  .count-chip.sme.ok{color:#d7c9ff;border-color:rgba(var(--violet-rgb),.34);background:rgba(var(--violet-rgb),.08)}
   .roster-count{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text-3);white-space:nowrap}
   .role-tools{display:flex;gap:6px;margin-bottom:7px}
   .role-search{flex:1;height:29px!important;font-size:10.5px!important;border-radius:7px!important;padding:0 9px!important}
@@ -283,14 +290,22 @@
     background:linear-gradient(145deg,hsl(var(--h,160) 52% 66%),hsl(calc(var(--h,160) + 38) 50% 45%));
   }
   .role-name{flex:1;min-width:0;font-size:10.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .role-row.lead .role-name{color:#f3d99f}
-  .role-row.sme .role-name{color:#d0d0ff}
-  .role-row select{
-    width:88px;flex:0 0 auto;height:25px;font-size:9.5px;padding:0 20px 0 6px;border-radius:6px;
-    background-color:rgba(3,8,16,.6);background-position:right 6px center;background-size:8px;color:var(--text-2);
+  .role-row.role-lead .role-name{color:#f3d99f}
+  .role-row.role-sme .role-name{color:#d0d0ff}
+  .role-swatches{display:flex;align-items:center;gap:5px;flex:0 0 auto;margin-left:2px}
+  .role-swatch{
+    width:17px;height:17px;border-radius:50%;border:1px solid rgba(255,255,255,.16);padding:0;
+    cursor:pointer;opacity:.38;transition:opacity .15s,transform .15s,box-shadow .15s,border-color .15s;
   }
-  .role-row.lead select{color:#e8ca83;border-color:rgba(var(--gold-rgb),.18)}
-  .role-row.sme select{color:#c4c4ff;border-color:rgba(var(--violet-rgb),.18)}
+  .role-swatch.role-member{background:linear-gradient(145deg,#c7d0db,#6b7685)}
+  .role-swatch.role-lead{background:linear-gradient(145deg,#ffe6a3,#dca93f)}
+  .role-swatch.role-sme{background:linear-gradient(145deg,#e1d0ff,#8b5cf6)}
+  .role-swatch:hover{opacity:.75;transform:scale(1.06)}
+  .role-swatch[aria-pressed="true"]{
+    opacity:1;transform:scale(1.08);border-color:rgba(255,255,255,.7);
+    box-shadow:0 0 0 2px rgba(255,255,255,.18),0 0 10px -2px rgba(255,255,255,.28);
+  }
+  .role-swatch:focus-visible{outline:1px solid var(--mint);outline-offset:2px}
   .role-empty{padding:18px 8px;text-align:center;font-size:10px;line-height:1.7;color:var(--text-3)}
   .role-hint{font-size:9.5px;line-height:1.55;color:var(--text-3);margin-top:9px}
   .role-hint.ok{color:#8fe8cc}
@@ -451,6 +466,8 @@
   .stage-meta{display:flex;align-items:center;flex-wrap:wrap;gap:9px;font-size:9.5px;color:var(--text-3);min-height:16px}
   .stage-meta .msep{width:3px;height:3px;border-radius:50%;background:rgba(148,163,184,.55);flex:0 0 auto}
   .stage-meta .mono{font-family:var(--mono);letter-spacing:.01em;color:var(--text-2)}
+  .stage-meta .meta-lead{color:var(--gold)}
+  .stage-meta .meta-sme{color:var(--violet)}
   .stage-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
   .stage-actions .btn{height:34px;font-size:10.5px;padding:0 11px}
   .stale-banner{
@@ -473,6 +490,9 @@
   }
   .check .cico svg{width:8px;height:8px}
   .check b{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--text-2);letter-spacing:.02em}
+  .check .role-dot{width:5px;height:5px;border-radius:50%;flex:0 0 auto;background:currentColor;opacity:.9}
+  .check .role-dot.lead{color:var(--gold)}
+  .check .role-dot.sme{color:var(--violet)}
   .check.ok{color:#8fe8cc;border-color:rgba(var(--a-rgb),.2);background:rgba(var(--a-rgb),.045)}
   .check.ok .cico{background:rgba(var(--a-rgb),.16);border-color:transparent;color:#a9f5df}
   .check.ok b{color:#a9f5df}
@@ -590,7 +610,7 @@
     border:1px dashed rgba(var(--gold-rgb),.22);background:rgba(var(--gold-rgb),.028);
     display:flex;align-items:center;justify-content:center;transition:border-color .25s,background .25s;
   }
-  .lead-slot.filled{border-style:solid;border-color:rgba(var(--gold-rgb),.3);background:linear-gradient(120deg,rgba(var(--gold-rgb),.075),rgba(var(--gold-rgb),.015));justify-content:flex-start}
+  .lead-slot.filled{border-style:solid;border-color:rgba(var(--gold-rgb),.3);background:linear-gradient(120deg,rgba(var(--gold-rgb),.075),rgba(var(--gold-rgb),.015));justify-content:flex-start;flex-direction:column;align-items:stretch;gap:7px}
   .lead-placeholder{font-family:var(--mono);font-size:7.5px;letter-spacing:.17em;color:rgba(var(--gold-rgb),.5);text-transform:uppercase}
   .lead-card{display:flex;align-items:center;gap:10px;width:100%;min-width:0}
   .lead-avatar{
@@ -721,7 +741,6 @@
     border-color:rgba(0,223,114,.55);box-shadow:0 0 0 3px rgba(0,223,114,.1);background:rgba(2,14,9,.84);
   }
   select option{background:#04160d;color:var(--text)}
-  .role-row select{background-color:rgba(2,14,9,.66);border-color:rgba(0,223,114,.1)}
 
   /* --- panels / sidebar --- */
   .panel{
@@ -897,6 +916,10 @@
   .dc-slot.team-a .slot-avatar{background:linear-gradient(145deg,#ffcd9b,#ef7a1e);box-shadow:0 0 28px -6px rgba(255,150,63,.55),inset 0 1px 0 rgba(255,255,255,.4)}
   .dc-slot.team-f .slot-avatar{background:linear-gradient(145deg,#e1d0ff,#8b5cf6);box-shadow:0 0 28px -6px rgba(177,140,255,.55),inset 0 1px 0 rgba(255,255,255,.4)}
   .dc-slot.complete{border-color:rgba(0,223,114,.3);background:rgba(0,223,114,.05)}
+  .dc-slot.role-lead{border-color:rgba(var(--gold-rgb),.5);background:linear-gradient(180deg,rgba(var(--gold-rgb),.09),rgba(2,14,9,.5))}
+  .dc-slot.role-sme{border-color:rgba(var(--violet-rgb),.5);background:linear-gradient(180deg,rgba(var(--violet-rgb),.09),rgba(2,14,9,.5))}
+  .dc-slot.role-lead .slot-avatar{background:linear-gradient(145deg,#ffe6a3,#e2a93d);color:#1d1403;box-shadow:0 0 28px -6px rgba(var(--gold-rgb),.55),inset 0 1px 0 rgba(255,255,255,.4)}
+  .dc-slot.role-sme .slot-avatar{background:linear-gradient(145deg,#e1d0ff,#8b5cf6);color:#120b22;box-shadow:0 0 28px -6px rgba(var(--violet-rgb),.55),inset 0 1px 0 rgba(255,255,255,.4)}
   .slot-avatar.glyph{
     background:radial-gradient(circle at 38% 32%,rgba(255,190,130,.26),rgba(3,22,14,.94) 72%);
     border:1px solid rgba(255,150,63,.28);color:#ffb066;box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
@@ -1204,11 +1227,11 @@
         <div class="panel-head">
           <span class="step-tag">02</span>
           <span class="panel-title">角色配置</span>
-          <span class="panel-status" id="rolesStatus"><span class="sdot"></span><span id="rolesStatusText">待载入</span></span>
+          <span class="panel-status" id="rolesStatus"><span id="rolesStatusText">待载入</span></span>
         </div>
         <div class="role-summary">
-          <span class="count-chip lead" id="leadCount"><span class="cdot"></span>Lead 0/2</span>
-          <span class="count-chip sme" id="smeCount"><span class="cdot"></span>SME 0/5</span>
+          <span class="count-chip lead" id="leadCount"><span class="cdot"></span>0/≥2</span>
+          <span class="count-chip sme" id="smeCount"><span class="cdot"></span>0/≥2</span>
           <span class="roster-count" id="rosterCount">0 人</span>
         </div>
         <div class="role-tools">
@@ -1219,7 +1242,7 @@
           </button>
         </div>
         <div class="role-list" id="roleList"></div>
-        <div class="role-empty" id="roleEmpty">导入名单后，可在这里核对并调整角色。<br>需要 2 名 Team Lead、5 名 SME。</div>
+        <div class="role-empty" id="roleEmpty">导入名单后，可在这里核对并调整角色。<br>金色与紫色角色各至少 2 名。</div>
         <div class="role-hint" id="roleHint">角色将决定分组约束。</div>
       </section>
 
@@ -1284,8 +1307,8 @@
         <section class="hero" id="emptyState">
           <div class="hero-copy">
             <div class="eyebrow"><span class="eline"></span>Strada Global · Halloween Draw</div>
-            <h2>把名单，<br><span class="grad">交给万圣夜。</span></h2>
-            <p>Strada 万圣节限定抽签：读取 Excel 名单，按可复现的种子分成两队。Team Lead 分属两队，SME 按 2 / 3 落位，人数自动平衡。</p>
+            <h2>最最最最<br><span class="grad">公平公正公开的<br>万圣寻宝<br>小组划分</span></h2>
+            <p>Strada 万圣节限定抽签</p>
             <div class="hero-actions">
               <button class="btn primary" id="emptyBrowseBtn" type="button">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 18v-5"/><path d="m9.8 15.2 2.2-2.2 2.2 2.2"/></svg>
@@ -1296,11 +1319,6 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8" stroke="#03110B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 载入示例名单
               </button>
-            </div>
-            <div class="hero-feats">
-              <span class="hero-feat"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>本地解析 · 离线可用</span>
-              <span class="hero-feat"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>种子可复现</span>
-              <span class="hero-feat"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>一键导出 CSV / Excel</span>
             </div>
           </div>
           <div class="hero-art" aria-hidden="true">
@@ -1335,7 +1353,6 @@
               <div class="art-row"><span class="art-av"></span><span class="art-line" style="width:64%"></span></div>
               <div class="art-row"><span class="art-av"></span><span class="art-line" style="width:45%"></span></div>
               <div class="art-row"><span class="art-av lead-av"></span><span class="art-line" style="width:58%"></span></div>
-              <span class="art-tag tag-lead">LEAD</span>
             </div>
             <div class="art-card art-f">
               <div class="art-head">
@@ -1345,7 +1362,6 @@
               <div class="art-row"><span class="art-av"></span><span class="art-line" style="width:52%"></span></div>
               <div class="art-row"><span class="art-av sme-av"></span><span class="art-line" style="width:68%"></span></div>
               <div class="art-row"><span class="art-av"></span><span class="art-line" style="width:40%"></span></div>
-              <span class="art-tag tag-sme">SME</span>
             </div>
             <div class="art-die">
               <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
@@ -1430,8 +1446,8 @@
           </div>
 
           <div class="checks" id="checks">
-            <span class="check" id="checkLead"><span class="cico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Team Lead 分属两队</span><b id="checkLeadValue">2 Lead</b></span>
-            <span class="check" id="checkSme"><span class="cico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>SME 两组分配</span><b id="checkSmeValue">2 / 3</b></span>
+            <span class="check" id="checkLead"><span class="cico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="role-dot lead" aria-hidden="true"></span><span>两组分配</span><b id="checkLeadValue">差 ≤ 1</b></span>
+            <span class="check" id="checkSme"><span class="cico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="role-dot sme" aria-hidden="true"></span><span>两组分配</span><b id="checkSmeValue">差 ≤ 1</b></span>
             <span class="check" id="checkBalance"><span class="cico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>人数差</span><b id="checkBalanceValue">≤ 3</b></span>
           </div>
 
@@ -1466,14 +1482,14 @@
                 <div class="team-head-copy">
                   <input class="team-name-input" id="teamATitle" maxlength="28" value="Team A" aria-label="队伍一名称" autocomplete="off" spellcheck="false">
                   <div class="team-sub">
-                    <span class="l-lead"><span class="mini-dot"></span>Lead <b id="teamALeadCount">0</b></span>
-                    <span class="l-sme"><span class="mini-dot"></span>SME <b id="teamASmeCount">0</b></span>
+                    <span class="l-lead"><span class="mini-dot"></span><b id="teamALeadCount">0</b></span>
+                    <span class="l-sme"><span class="mini-dot"></span><b id="teamASmeCount">0</b></span>
                     <span>成员 <b id="teamAMemberCount">0</b></span>
                   </div>
                 </div>
                 <span class="team-count"><b id="teamACount">0</b><i>人</i></span>
               </header>
-              <div class="lead-slot" id="teamALead"><span class="lead-placeholder">Team Lead · 待抽取</span></div>
+              <div class="lead-slot" id="teamALead"><span class="lead-placeholder">待抽取</span></div>
               <div class="team-list" id="teamAList"><div class="list-placeholder">成员将在这里落位</div></div>
             </section>
 
@@ -1484,14 +1500,14 @@
                 <div class="team-head-copy">
                   <input class="team-name-input" id="teamFTitle" maxlength="28" value="Team F" aria-label="队伍二名称" autocomplete="off" spellcheck="false">
                   <div class="team-sub">
-                    <span class="l-lead"><span class="mini-dot"></span>Lead <b id="teamFLeadCount">0</b></span>
-                    <span class="l-sme"><span class="mini-dot"></span>SME <b id="teamFSmeCount">0</b></span>
+                    <span class="l-lead"><span class="mini-dot"></span><b id="teamFLeadCount">0</b></span>
+                    <span class="l-sme"><span class="mini-dot"></span><b id="teamFSmeCount">0</b></span>
                     <span>成员 <b id="teamFMemberCount">0</b></span>
                   </div>
                 </div>
                 <span class="team-count"><b id="teamFCount">0</b><i>人</i></span>
               </header>
-              <div class="lead-slot" id="teamFLead"><span class="lead-placeholder">Team Lead · 待抽取</span></div>
+              <div class="lead-slot" id="teamFLead"><span class="lead-placeholder">待抽取</span></div>
               <div class="team-list" id="teamFList"><div class="list-placeholder">成员将在这里落位</div></div>
             </section>
           </div>
@@ -1518,26 +1534,27 @@
   <div class="dlg-head">
     <svg class="dlg-pumpkin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="#8fd14f" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8M9.5 16.1c1.6.9 3.4.9 5 0" stroke="#03110B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <h3>MemberSplit</h3>
-    <span class="dlg-ver">v1.1 · HALLOWEEN</span>
+    <span class="dlg-ver">v1.2 · HALLOWEEN</span>
     <button class="dlg-close" id="aboutClose" type="button" aria-label="关闭">✕</button>
   </div>
   <div class="dlg-body">
-    <p class="dlg-intro">Strada 万圣节特别版 · <b>TRICK OR TEAM</b>。分组规则、种子复现和离线能力保持不变，界面换上万圣夜皮肤。</p>
+    <p class="dlg-intro">Strada 万圣节特别版 · <b>TRICK OR TEAM</b>。种子复现和离线能力保持不变；1.2 起随机键由种子与姓名共同生成，Team Lead 与 SME 均不限定固定人数，改为至少 2 名且两队人数差不超过 1。</p>
     <h4>怎么用</h4>
     <ol>
       <li>导入 Excel 或 CSV 名单，选择工作表、起始行、姓名列；角色列会自动识别，也可以手动标记。</li>
-      <li>核对角色：恰好 <b>2 名 Team Lead</b>、<b>5 名 SME</b>。不满足时无法开始。</li>
+      <li>核对角色：<b>至少 2 名 Team Lead</b>、<b>至少 2 名 SME</b>。不满足时无法开始。</li>
       <li>设置队名与种子，点击“开始分组”。队名只影响展示与导出，不会改变随机结果。</li>
       <li>动画结束后导出 Excel 或 CSV，或复制为表格文本。</li>
     </ol>
     <h4>分组保证</h4>
     <ul>
-      <li><b>Team Lead</b>：2 名 Lead 必定分属两队，每队 1 名。</li>
-      <li><b>SME</b>：5 名 SME 在两组中按 2 / 3 分配。</li>
+      <li><b>Team Lead</b>：至少 2 名，两组按人数尽可能均分，两队 Lead 人数差不超过 1（因此每队至少 1 名）。</li>
+      <li><b>SME</b>：至少 2 名；两组按人数尽可能均分，两队 SME 人数差不超过 1（人数为奇数时多出的一人由种子决定）。</li>
       <li><b>人数补偿</b>：按总人数均分，并补偿角色基础人数造成的偏差，最终人数差为 0 或 1（规则上限 3）。</li>
+      <li><b>姓名参与随机</b>：每人在角色池内按 <span class="mono">hash(种子 + 姓名)</span> 排序后落位，同一批人改变名单行顺序不会改变结果。</li>
     </ul>
     <h4>种子与复现</h4>
-    <p>默认种子是当天的 <b>yyyyMMdd</b>。留空时使用当前毫秒时间戳。相同名单、相同角色、相同种子会得到完全相同的分组；点击“换一组”会用新的时间戳种子重新抽取。</p>
+    <p>默认种子是当天的 <b>yyyyMMdd</b>。留空时使用当前毫秒时间戳。随机键由种子和姓名共同决定：同一批人（姓名、角色相同）与相同种子会得到完全相同的分组，名单行顺序不影响结果；改名会改变结果。点击“换一组”会用新的时间戳种子重新抽取。</p>
     <h4>离线与隐私</h4>
     <p>这是一个单文件应用。Excel 解析、分组和导出全部在浏览器本地完成，不发起任何网络请求，也不会上传名单。可以断网使用，也可以拷贝到任何电脑上直接打开。</p>
     <div class="dlg-note">动画速率可随时调整；抽取过程中可按 Esc 或点击“跳过动画”立即完成。表头识别基于常见中英文关键词，识别不准确时可在左侧手动指定列。</div>
@@ -1585,8 +1602,6 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
   const MAX_ROWS = 5000;
   const MAX_COLS = 64;
   const MAX_FILE_SIZE = 30 * 1024 * 1024;
-  const ROLE_TEXT = { lead: 'Team Lead', sme: 'SME', member: 'Member' };
-  const ROLE_SHORT = { lead: 'TEAM LEAD', sme: 'SME', member: 'MEMBER' };
   const ROLE_RANK = { lead: 0, sme: 1, member: 2 };
 
   const PUMPKIN_MARK = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5.7C11 3.8 11.5 2.4 13.1 1.6c.3 1.5 0 2.8-1 3.8" stroke="#8fd14f" stroke-width="1.6" stroke-linecap="round"/><path d="M12 5.2c-4.9 0-8 3.1-8 7.3 0 4.9 3.6 8.1 8 8.1s8-3.2 8-8.1c0-4.2-3.1-7.3-8-7.3Z" fill="currentColor"/><path d="m8.3 11.2 1.5 1.8 1.3-2M12.9 13l1.3-2 1.5 1.8M9.5 16.1c1.6.9 3.4.9 5 0" stroke="#03110B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -1732,23 +1747,29 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       h ^= str.charCodeAt(i);
       h = Math.imul(h, 16777619);
     }
+    h ^= h >>> 16;
+    h = Math.imul(h, 0x85ebca6b);
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35);
+    h ^= h >>> 16;
     return h >>> 0;
   }
-  function mulberry32(a) {
-    return function () {
-      let t = a += 0x6D2B79F5;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+  // Names are the only stable identity when a roster is reordered, so draw
+  // keys come from the seed and the name, never from the row position.
+  function seedKey(seed, salt, name) {
+    return hashString(`${seed}\u0000${salt}\u0000${name}`);
   }
-  function shuffle(arr, rng) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      const t = a[i]; a[i] = a[j]; a[j] = t;
-    }
-    return a;
+  function orderBySeed(pool, seed, salt) {
+    return pool.slice().sort((a, b) => {
+      const diff = seedKey(seed, salt, a.name) - seedKey(seed, salt, b.name);
+      if (diff) return diff;
+      // Hash collisions are broken by name; two entries with the same name
+      // are indistinguishable in the output.
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
+  }
+  function seedCoin(seed, label) {
+    return (hashString(`${seed}\u0000${label}`) & 1) === 1;
   }
   function initials(name) {
     const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -1982,7 +2003,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     el.nameColSelect.addEventListener('change', onNameColChange);
     el.roleColSelect.addEventListener('change', onRoleColChange);
 
-    el.roleList.addEventListener('change', onRoleSelect);
+    el.roleList.addEventListener('click', onRolePick);
     el.roleSearch.addEventListener('input', applyRoleFilter);
     el.roleResetBtn.addEventListener('click', resetRolesFromColumn);
 
@@ -2512,7 +2533,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     const frag = document.createDocumentFragment();
     for (const p of state.participants) {
       const row = document.createElement('div');
-      row.className = `role-row ${p.role}`;
+      row.className = `role-row role-${p.role}`;
       row.dataset.pid = p.id;
 
       const av = document.createElement('span');
@@ -2525,17 +2546,21 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       name.textContent = p.name;
       name.title = p.name;
 
-      const sel = document.createElement('select');
-      sel.setAttribute('aria-label', `${p.name} 的角色`);
+      const group = document.createElement('div');
+      group.className = 'role-swatches';
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', `${p.name} 的角色`);
       [['member', 'Member'], ['lead', 'Team Lead'], ['sme', 'SME']].forEach(([v, t]) => {
-        const o = document.createElement('option');
-        o.value = v;
-        o.textContent = t;
-        sel.appendChild(o);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `role-swatch role-${v}`;
+        btn.dataset.role = v;
+        btn.setAttribute('aria-label', t);
+        btn.setAttribute('aria-pressed', String(p.role === v));
+        group.appendChild(btn);
       });
-      sel.value = p.role;
 
-      row.append(av, name, sel);
+      row.append(av, name, group);
       frag.appendChild(row);
     }
     el.roleList.appendChild(frag);
@@ -2551,15 +2576,18 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     });
   }
 
-  function onRoleSelect(e) {
-    const sel = e.target.closest('select');
-    if (!sel) return;
-    const row = sel.closest('.role-row');
+  function onRolePick(e) {
+    const btn = e.target.closest('.role-swatch');
+    if (!btn) return;
+    const row = btn.closest('.role-row');
     if (!row) return;
     const p = state.participants.find(x => x.id === row.dataset.pid);
-    if (!p) return;
-    p.role = sel.value;
-    row.className = `role-row ${p.role}`;
+    if (!p || p.role === btn.dataset.role) return;
+    p.role = btn.dataset.role;
+    row.className = `role-row role-${p.role}`;
+    row.querySelectorAll('.role-swatch').forEach(b => {
+      b.setAttribute('aria-pressed', String(b === btn));
+    });
     updateRoleSummary();
     refreshValidation();
     if (state.plan) markStale(); else refreshStage();
@@ -2569,34 +2597,34 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     const leads = state.participants.filter(p => p.role === 'lead').length;
     const smes = state.participants.filter(p => p.role === 'sme').length;
     const n = state.participants.length;
-    const valid = leads === 2 && smes === 5;
+    const valid = leads >= 2 && smes >= 2;
 
-    el.leadCount.textContent = `Lead ${leads}/2`;
-    el.smeCount.textContent = `SME ${smes}/5`;
-    el.leadCount.className = 'count-chip lead' + (leads === 2 ? ' ok' : '');
-    el.smeCount.className = 'count-chip sme' + (smes === 5 ? ' ok' : '');
+    el.leadCount.innerHTML = `<span class="cdot"></span>${leads}/≥2`;
+    el.smeCount.innerHTML = `<span class="cdot"></span>${smes}/≥2`;
+    el.leadCount.className = 'count-chip lead' + (leads >= 2 ? ' ok' : '');
+    el.smeCount.className = 'count-chip sme' + (smes >= 2 ? ' ok' : '');
     el.rosterCount.textContent = `${n} 人`;
 
     if (n === 0) {
       el.rolesStatusText.textContent = '待载入';
       el.rolesStatus.classList.remove('live');
     } else {
-      el.rolesStatusText.textContent = `${leads} Lead · ${smes} SME`;
+      el.rolesStatusText.innerHTML = `<i class="rs-dot lead"></i><span class="rs-num lead">${leads}</span><i class="rs-dot sme"></i><span class="rs-num sme">${smes}</span>`;
       el.rolesStatus.classList.toggle('live', valid);
     }
 
     let hint = '';
     let cls = 'role-hint';
     if (n === 0) {
-      hint = '角色将决定分组约束：2 名 Team Lead、5 名 SME。';
+      hint = '角色将决定分组约束：金色与紫色角色各至少 2 名。';
     } else if (valid) {
-      hint = '角色配置符合要求：2 Team Lead / 5 SME。';
+      hint = '角色配置符合要求：金色 ≥ 2 / 紫色 ≥ 2。';
       cls += ' ok';
     } else if (state.roleCol < 0) {
-      hint = `未指定角色列。请在列表中手动设置 2 名 Team Lead、5 名 SME（当前 Lead ${leads}、SME ${smes}）。`;
+      hint = `未指定角色列。请在列表中手动设置：金色与紫色角色各至少 2 名（当前金色 ${leads}、紫色 ${smes}）。`;
       cls += ' warn';
     } else {
-      hint = `需要恰好 2 名 Team Lead 与 5 名 SME（当前 Lead ${leads}、SME ${smes}）。可直接在列表中调整。`;
+      hint = `需要金色与紫色角色各至少 2 名（当前金色 ${leads}、紫色 ${smes}）。可直接在列表中调整。`;
       cls += ' warn';
     }
     el.roleHint.textContent = hint;
@@ -2642,10 +2670,10 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     const leads = state.participants.filter(p => p.role === 'lead').length;
     const smes = state.participants.filter(p => p.role === 'sme').length;
     if (n === 0) return { ok: false, msg: '请先导入 Excel 名单，或载入内置示例名单。' };
-    if (n < 7) return { ok: false, msg: `名单至少需要 7 名成员（当前 ${n} 人）。` };
-    if (leads !== 2) return { ok: false, msg: `Team Lead 需要恰好 2 名（当前 ${leads} 名）。` };
-    if (smes !== 5) return { ok: false, msg: `SME 需要恰好 5 名（当前 ${smes} 名）。` };
-    return { ok: true, msg: `名单与角色已就绪 · ${n} 人 · 2 Lead / 5 SME。` };
+    if (n < 4) return { ok: false, msg: `名单至少需要 4 名成员（金色与紫色角色各 2 名，当前 ${n} 人）。` };
+    if (leads < 2) return { ok: false, msg: `金色角色至少需要 2 名（当前 ${leads} 名）。` };
+    if (smes < 2) return { ok: false, msg: `紫色角色至少需要 2 名（当前 ${smes} 名）。` };
+    return { ok: true, msg: `名单与角色已就绪 · ${n} 人 · 金色 ${leads} / 紫色 ${smes}。` };
   }
 
   function refreshValidation() {
@@ -2708,7 +2736,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     if (!state.seedInput.trim()) {
       el.seedHint.textContent = '留空：开始分组时使用当前毫秒时间戳。';
     } else {
-      el.seedHint.textContent = '相同名单、角色与种子 = 相同结果。';
+      el.seedHint.textContent = '相同姓名、角色与种子 = 相同结果（与名单顺序无关）。';
     }
   }
 
@@ -2725,37 +2753,44 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
   /* ---------------- group planning ---------------- */
 
   function buildPlan(participants, seedUsed, seedWasBlank) {
-    const rng = mulberry32(hashString(String(seedUsed)));
-    const leads = shuffle(participants.filter(p => p.role === 'lead'), rng);
-    const smes = shuffle(participants.filter(p => p.role === 'sme'), rng);
-    const members = shuffle(participants.filter(p => p.role === 'member'), rng);
+    const seed = String(seedUsed);
+    const leads = orderBySeed(participants.filter(p => p.role === 'lead'), seed, 'lead');
+    const smes = orderBySeed(participants.filter(p => p.role === 'sme'), seed, 'sme');
+    const members = orderBySeed(participants.filter(p => p.role === 'member'), seed, 'member');
 
-    if (leads.length !== 2 || smes.length !== 5) throw new Error('角色数量不符合要求');
+    if (leads.length < 2 || smes.length < 2) throw new Error('角色数量不符合要求');
 
     const total = participants.length;
-    const aGetsThree = rng() < 0.5;
+    const leadExtraA = seedCoin(seed, 'lead-split');
+    // When both pools are odd, give the two odd extras to opposite teams so
+    // the role bases stay within one person of each other.
+    const smeExtraA = leads.length % 2 === 1 && smes.length % 2 === 1
+      ? !leadExtraA
+      : seedCoin(seed, 'sme-split');
+    const leadCountA = Math.floor(leads.length / 2) + (leads.length % 2 === 1 && leadExtraA ? 1 : 0);
+    const smeCountA = Math.floor(smes.length / 2) + (smes.length % 2 === 1 && smeExtraA ? 1 : 0);
     const teamOf = new Map();
 
-    // Leads must be split across both teams.
-    teamOf.set(leads[0].id, 0);
-    teamOf.set(leads[1].id, 1);
-
-    // Five SMEs: one team gets 3, the other 2.
+    // Each role pool is split as evenly as possible, so the two teams never
+    // differ by more than one lead or one SME.
+    leads.forEach((p, i) => {
+      teamOf.set(p.id, i < leadCountA ? 0 : 1);
+    });
     smes.forEach((p, i) => {
-      const t = aGetsThree ? (i < 3 ? 0 : 1) : (i < 2 ? 0 : 1);
-      teamOf.set(p.id, t);
+      teamOf.set(p.id, i < smeCountA ? 0 : 1);
     });
 
-    const baseA = 1 + (aGetsThree ? 3 : 2);
-    const baseF = 7 - baseA;
-    // Even rosters split exactly in half; odd rosters randomly give one team
-    // the extra seat. Role bases can force a one-person difference at n = 7.
-    let targetA = Math.floor(total / 2) + (total % 2 === 1 && rng() < 0.5 ? 1 : 0);
+    const baseA = leadCountA + smeCountA;
+    const baseF = (leads.length - leadCountA) + (smes.length - smeCountA);
+    // Even rosters split exactly in half; odd rosters give one team the extra
+    // seat by a seed-derived coin. Role bases can force a one-person difference
+    // when there are too few members to compensate.
+    let targetA = Math.floor(total / 2) + (total % 2 === 1 && seedCoin(seed, 'odd-extra') ? 1 : 0);
     targetA = Math.max(baseA, Math.min(total - baseF, targetA));
 
     // Compensation: fill towards balanced target sizes, never exceeding the
     // role bases. The final difference is 0 or 1 (well within the <= 3 rule).
-    const memberOrder = shuffle(members, rng);
+    const memberOrder = orderBySeed(members, seed, 'member-fill');
     const needA = targetA - baseA;
     memberOrder.forEach((p, i) => {
       teamOf.set(p.id, i < needA ? 0 : 1);
@@ -2768,15 +2803,18 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       const cp = copies.get(p.id);
       (teamOf.get(p.id) === 0 ? teamA : teamF).push(cp);
     }
-    const sorter = (a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role] || a.index - b.index;
+    // Presentation order is name-based too, so exports do not change when the
+    // source roster is reordered.
+    const sorter = (a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role]
+      || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     teamA.sort(sorter);
     teamF.sort(sorter);
 
-    // Reveal order is separately shuffled so team assignment does not clump.
+    // Reveal order gets its own seed keys so team assignment does not clump.
     const revealOrder = [];
-    shuffle(members, rng).forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
-    shuffle(smes, rng).forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
-    shuffle(leads, rng).forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
+    orderBySeed(members, seed, 'reveal-member').forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
+    orderBySeed(smes, seed, 'reveal-sme').forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
+    orderBySeed(leads, seed, 'reveal-lead').forEach(p => revealOrder.push({ person: copies.get(p.id), team: teamOf.get(p.id) }));
 
     const leadA = teamA.filter(p => p.role === 'lead').length;
     const leadF = teamF.filter(p => p.role === 'lead').length;
@@ -2784,8 +2822,8 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     const smeF = teamF.filter(p => p.role === 'sme').length;
     const diff = Math.abs(teamA.length - teamF.length);
     const checks = {
-      leads: leadA === 1 && leadF === 1,
-      smes: (smeA === 2 && smeF === 3) || (smeA === 3 && smeF === 2),
+      leads: leadA + leadF === leads.length && Math.abs(leadA - leadF) <= 1,
+      smes: smeA + smeF === smes.length && Math.abs(smeA - smeF) <= 1,
       balance: diff <= 3
     };
     if (!checks.leads || !checks.smes || !checks.balance) throw new Error('约束校验失败');
@@ -2914,7 +2952,8 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       const smes = state.participants.filter(p => p.role === 'sme').length;
       setStageMeta([
         `${state.participants.length} 人`,
-        `${leads} Lead / ${smes} SME`,
+        { text: `● ${leads}`, cls: 'meta-role meta-lead' },
+        { text: `● ${smes}`, cls: 'meta-role meta-sme' },
         { text: `种子 ${state.seedInput.trim() || '时间戳（留空）'}`, cls: 'mono' }
       ]);
     } else {
@@ -2962,8 +3001,8 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       el.checkSmeValue.textContent = '—';
       el.checkBalanceValue.textContent = '—';
     } else {
-      el.checkLeadValue.textContent = '2 Lead';
-      el.checkSmeValue.textContent = '2 / 3';
+      el.checkLeadValue.textContent = '差 ≤ 1';
+      el.checkSmeValue.textContent = '差 ≤ 1';
       el.checkBalanceValue.textContent = '≤ 3';
     }
   }
@@ -2989,7 +3028,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     ];
     panels.forEach(p => {
       p.lead.className = 'lead-slot';
-      p.lead.innerHTML = '<span class="lead-placeholder">Team Lead · 待抽取</span>';
+      p.lead.innerHTML = '<span class="lead-placeholder">待抽取</span>';
       p.list.innerHTML = '<div class="list-placeholder">成员将在这里落位</div>';
       p.count.textContent = '0';
     });
@@ -3020,7 +3059,8 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
 
   function fillLeadSlot(teamIdx, person, animate) {
     const slot = teamIdx === 0 ? el.teamALead : el.teamFLead;
-    slot.innerHTML = '';
+    const placeholder = slot.querySelector('.lead-placeholder');
+    if (placeholder) placeholder.remove();
     slot.className = 'lead-slot filled';
     const card = document.createElement('div');
     card.className = 'lead-card' + (animate ? ' enter' : '');
@@ -3029,18 +3069,12 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     av.textContent = initials(person.name);
     const copy = document.createElement('div');
     copy.className = 'lead-copy';
-    const kicker = document.createElement('div');
-    kicker.className = 'lead-kicker';
-    kicker.textContent = 'Team Lead';
     const name = document.createElement('div');
     name.className = 'lead-name';
     name.textContent = person.name;
     name.title = person.name;
-    copy.append(kicker, name);
-    const crown = document.createElement('span');
-    crown.className = 'lead-crown';
-    crown.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3.5 8.5 8 12l4-7 4 7 4.5-3.5-1.6 9H5.1z"/><path d="M5.5 20h13"/></svg>';
-    card.append(av, copy, crown);
+    copy.appendChild(name);
+    card.append(av, copy);
     slot.appendChild(card);
   }
 
@@ -3076,12 +3110,6 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     name.title = person.name;
 
     card.append(av, name);
-    if (person.role === 'sme') {
-      const pill = document.createElement('span');
-      pill.className = 'role-pill';
-      pill.textContent = 'SME';
-      card.appendChild(pill);
-    }
     return card;
   }
 
@@ -3178,11 +3206,11 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
 
       const entry = plan.revealOrder[i];
       const timing = computeTiming(plan.total);
-      el.drawPhase.textContent = entry.person.role === 'sme' ? '抽取 SME' : entry.person.role === 'lead' ? '抽取 Team Lead' : '抽取成员';
+      el.drawPhase.textContent = '抽取成员';
       el.destValue.textContent = '抽取中…';
       el.drawConsole.removeAttribute('data-team');
-      el.slotCard.className = 'dc-slot rolling';
-      el.slotRole.textContent = ROLE_SHORT[entry.person.role];
+      el.slotCard.className = `dc-slot rolling role-${entry.person.role}`;
+      el.slotRole.textContent = '抽取中…';
 
       const flipEvery = clamp(timing.roll / 3, 30, 85);
       clearInterval(state.anim.rollTimer);
@@ -3193,7 +3221,6 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
         clearSlotGlyph();
         el.slotAvatar.textContent = initials(p.name);
         el.slotAvatar.style.setProperty('--h', String(hueFor(p.name)));
-        el.slotRole.textContent = ROLE_SHORT[p.role];
       }, flipEvery);
 
       state.anim.timer = setTimeout(() => {
@@ -3221,12 +3248,12 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     const idx = entry.team;
     const tName = teamName(idx);
     el.drawConsole.dataset.team = String(idx);
-    el.slotCard.className = `dc-slot locked team-${idx === 0 ? 'a' : 'f'}`;
+    el.slotCard.className = `dc-slot locked team-${idx === 0 ? 'a' : 'f'} role-${entry.person.role}`;
     el.slotName.textContent = entry.person.name;
     clearSlotGlyph();
     el.slotAvatar.textContent = initials(entry.person.name);
     el.slotAvatar.style.removeProperty('--h');
-    el.slotRole.textContent = ROLE_SHORT[entry.person.role];
+    el.slotRole.textContent = '已入队';
     el.destValue.textContent = `→ ${tName}`;
     addMember(idx, entry.person, true);
   }
@@ -3291,9 +3318,17 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
 
   function exportRows() {
     const plan = state.plan;
-    const rows = [['队伍', '姓名', '角色']];
-    plan.teamA.forEach(p => rows.push([teamName(0), p.name, ROLE_TEXT[p.role]]));
-    plan.teamF.forEach(p => rows.push([teamName(1), p.name, ROLE_TEXT[p.role]]));
+    const rows = [];
+    const rowCount = Math.max(plan.teamA.length, plan.teamF.length);
+    // Side-by-side layout: Team A names in column A, an empty separator in
+    // column B, Team F names in column C. No role column and no header row.
+    for (let i = 0; i < rowCount; i++) {
+      rows.push([
+        plan.teamA[i] ? plan.teamA[i].name : '',
+        '',
+        plan.teamF[i] ? plan.teamF[i].name : ''
+      ]);
+    }
     return rows;
   }
 
@@ -3302,8 +3337,8 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     const source = state.sourceKind === 'demo' ? '内置示例名单' : state.fileName || '—';
     return [
       ['MemberSplit 分组信息', ''],
-      ['队伍一', `${teamName(0)}（${plan.counts.a} 人｜Lead 1｜SME ${plan.counts.smeA}）`],
-      ['队伍二', `${teamName(1)}（${plan.counts.f} 人｜Lead 1｜SME ${plan.counts.smeF}）`],
+      ['队伍一', `${teamName(0)}（${plan.counts.a} 人｜Lead ${plan.counts.leadA}｜SME ${plan.counts.smeA}）`],
+      ['队伍二', `${teamName(1)}（${plan.counts.f} 人｜Lead ${plan.counts.leadF}｜SME ${plan.counts.smeF}）`],
       ['人数差', `${plan.counts.diff}（规则上限 3）`],
       ['种子', `${plan.seedUsed}${plan.seedWasBlank ? '（留空，使用毫秒时间戳）' : ''}`],
       ['生成时间', formatDateTime(plan.generatedAt)],
@@ -3312,9 +3347,9 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       ['起始行', state.sourceKind === 'file' ? state.startRow : '—'],
       ['姓名列', state.sourceKind === 'file' ? columnName(state.nameCol) : '内置数据'],
       ['角色列', state.sourceKind === 'file' ? (state.roleCol >= 0 ? columnName(state.roleCol) : '手动指定') : '内置数据'],
-      ['约束', 'Team Lead 分属两队；SME 2 / 3；人数差 ≤ 3'],
-      ['复现说明', '相同名单、角色与种子会得到完全相同的分组结果'],
-      ['工具', 'MemberSplit v1.1 · Halloween Edition · 离线运行']
+      ['约束', 'Team Lead 两队人数差 ≤ 1；SME 两队人数差 ≤ 1；人数差 ≤ 3'],
+      ['复现说明', '相同姓名、角色与种子会得到相同结果，与名单行顺序无关；改名会改变结果'],
+      ['工具', 'MemberSplit v1.2 · Halloween Edition · 离线运行']
     ];
   }
 
@@ -3341,8 +3376,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     try {
       const rows = exportRows();
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [{ wch: 20 }, { wch: 26 }, { wch: 14 }];
-      ws['!autofilter'] = { ref: `A1:C${rows.length}` };
+      ws['!cols'] = [{ wch: 22 }, { wch: 4 }, { wch: 22 }];
       const wsInfo = XLSX.utils.aoa_to_sheet(exportInfoRows());
       wsInfo['!cols'] = [{ wch: 18 }, { wch: 72 }];
       const wb = XLSX.utils.book_new();
