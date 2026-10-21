@@ -63,6 +63,8 @@
 - 相同姓名 + 相同角色 + 相同种子 = 完全相同的结果，与名单行顺序无关；改名会改变随机键，从而可能改变结果。队名只影响展示和导出，不参与随机。
 - 点击「换一组」会生成新的时间戳种子并重新抽取；「重新分组」沿用当前种子，因此会复现同一结果。
 
+> 完整的算法说明（哈希、角色分配、人数补偿、证明与示例）见 [docs/grouping-algorithm.md](docs/grouping-algorithm.md)。
+
 ## 动画
 
 - 逐名抽签：名字滚动 → 锁定 → 进入对应队伍；Team Lead 最后揭晓。
@@ -96,6 +98,8 @@ src/
   build.mjs                 ← 将模板 + SheetJS 打包为单个 HTML
   make-sample.cjs           ← 重新生成示例名单
   vendor/xlsx.full.min.js   ← SheetJS CE 0.20.3（离线内嵌）
+docs/
+  grouping-algorithm.md     ← 随机分组逻辑详解
 test/
   full.cjs                  ← 端到端功能测试
   stress.cjs                ← 多种人数 × 多种种子的约束压力测试
